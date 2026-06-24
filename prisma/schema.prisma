@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String          @id @default(uuid())
+  username     String          @unique
+  email        String          @unique
+  passwordHash String          @map("password_hash")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  progress     PlayerProgress?
+
+  @@map("users")
+}
+
+model PlayerProgress {
+  id              String   @id @default(uuid())
+  userId          String   @unique @map("user_id")
+  completedLevels String[] @map("completed_levels")
+  bestScores      Json     @map("best_scores")
+  currentLevelId  String   @default("") @map("current_level_id")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  user            User     @relation(fields: [userId], references: [id])
+
+  @@map("player_progress")
+}
+
+model LeaderboardEntry {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  username    String
+  levelId     String   @map("level_id")
+  score       Int
+  moves       Int
+  timeSeconds Int      @map("time_seconds")
+  rankedAt    DateTime @default(now()) @map("ranked_at")
+
+  @@index([levelId, score(sort: Desc)])
+  @@index([userId])
+  @@map("leaderboard_entries")
+}
+
+model LevelDefinition {
+  id         String   @id
+  name       String
+  difficulty String   @default("medium")
+  parMoves   Int?     @map("par_moves")
+  data       Json
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("level_definitions")
+}
