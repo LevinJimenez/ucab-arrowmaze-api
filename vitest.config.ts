@@ -6,6 +6,9 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./tests/setup.ts'],
+    // Evita que el CI quede rojo en fases tempranas sin tests aún.
+    // Cuando una capa tenga tests, se ejecutan con normalidad.
+    passWithNoTests: true,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
