@@ -1,0 +1,6 @@
+allowBuilds:
+  esbuild: true
+  prisma: true
+  '@prisma/engines': true
+  '@prisma/client': true
+  '@scarf/scarf': false
