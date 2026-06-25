@@ -26,7 +26,7 @@ module.exports = [
       // Desactivar la versión JS base (TS la sobreescribe)
       'no-unused-vars': 'off',
       'no-undef': 'off',
-      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/explicit-function-return-type': 'warn',
       // REGLA DURA: prohibido `any`
       '@typescript-eslint/no-explicit-any': 'error',
