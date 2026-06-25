@@ -49,6 +49,9 @@ jobs:
       - name: Run ESLint
         run: pnpm run lint
 
+      - name: Type-check (incl. tests)
+        run: pnpm run typecheck
+
       - name: Run Prisma Generate
         run: pnpm exec prisma generate
 
