@@ -21,20 +21,4 @@ describe('GetLevelDefinitionsUseCase', () => {
     // Assert
     expect(all).toHaveLength(2);
   });
-
-  it('should_return_the_level_when_found_by_id', async () => {
-    // Act
-    const level = await useCase.getById('level_star');
-
-    // Assert
-    expect(level?.name).toBe('Estrella');
-  });
-
-  it('should_return_null_when_level_is_not_found_by_id', async () => {
-    // Act
-    const level = await useCase.getById('missing');
-
-    // Assert
-    expect(level).toBeNull();
-  });
 });

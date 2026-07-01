@@ -10,8 +10,4 @@ export class GetLevelDefinitionsUseCase implements IUseCase<void, LevelDefinitio
   public async execute(): Promise<LevelDefinition[]> {
     return this.levelDefinitionRepository.getAll();
   }
-
-  public async getById(id: string): Promise<LevelDefinition | null> {
-    return this.levelDefinitionRepository.getById(id);
-  }
 }
