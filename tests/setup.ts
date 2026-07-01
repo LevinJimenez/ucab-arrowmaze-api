@@ -1,3 +1,4 @@
+import 'dotenv/config';
 // Fuerza NODE_ENV=test para que app.ts NO levante el listener al importarse
 // en los tests de integración. Las variables de integración (CI) se respetan.
 process.env.NODE_ENV = 'test';
