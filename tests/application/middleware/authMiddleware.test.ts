@@ -1,8 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import jwt from 'jsonwebtoken';
 import type { Response } from 'express';
-import { authMiddleware, AuthRequest } from '../../../src/application/middleware/authMiddleware';
-import { env } from '../../../src/config/env';
+import { createAuthMiddleware, AuthRequest } from '../../../src/application/middleware/authMiddleware';
+import { AuthFacade } from '../../../src/infrastructure/services/AuthFacade';
 
 const makeRes = (): Response => {
   const res = {} as Response;
@@ -11,10 +10,13 @@ const makeRes = (): Response => {
   return res;
 };
 
+const tokenService = new AuthFacade();
+const authMiddleware = createAuthMiddleware(tokenService);
+
 describe('authMiddleware', () => {
   it('should_attach_player_identity_and_continue_when_token_is_valid', () => {
     // Arrange
-    const token = jwt.sign({ userId: 'user-1', username: 'player1' }, env.JWT_SECRET);
+    const token = tokenService.generateToken('user-1', 'player1');
     const req = { headers: { authorization: `Bearer ${token}` } } as AuthRequest;
     const next = vi.fn();
 

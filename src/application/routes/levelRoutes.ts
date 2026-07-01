@@ -1,8 +1,7 @@
-import { Router } from 'express';
+import { Router, RequestHandler } from 'express';
 import { LevelController } from '../controllers/LevelController';
-import { authMiddleware } from '../middleware/authMiddleware';
 
-export function createLevelRouter(controller: LevelController): Router {
+export function createLevelRouter(controller: LevelController, authMiddleware: RequestHandler): Router {
   const router = Router();
 
   router.get('/', controller.getAll);
