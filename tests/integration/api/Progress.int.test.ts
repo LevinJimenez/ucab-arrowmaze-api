@@ -58,4 +58,49 @@ describe('Progress API — integration', () => {
     expect(getRes.body.data.bestScores).toEqual({ level_1: 900, level_2: 800 });
     expect(getRes.body.data.currentLevelId).toBe('level_3');
   }, TIMEOUT);
+
+  it('GET /progress returns 404 when the user has no progress yet', async () => {
+    const registerRes = await request(app)
+      .post('/auth/register')
+      .send({ username: 'freshuser', email: 'fresh@example.com', password: 'password123' });
+    const token: string = registerRes.body.data.token;
+
+    const res = await request(app)
+      .get('/progress')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.success).toBe(false);
+  }, TIMEOUT);
+
+  it('PUT /progress with invalid body returns 422', async () => {
+    const registerRes = await request(app)
+      .post('/auth/register')
+      .send({ username: 'progressuser', email: 'progress@example.com', password: 'password123' });
+    const token: string = registerRes.body.data.token;
+
+    const res = await request(app)
+      .put('/progress')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ completedLevels: 'not-an-array', bestScores: {}, currentLevelId: '' });
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+  }, TIMEOUT);
+
+  it('PUT /progress with a tampered token returns 401', async () => {
+    const registerRes = await request(app)
+      .post('/auth/register')
+      .send({ username: 'progressuser', email: 'progress@example.com', password: 'password123' });
+    const token: string = registerRes.body.data.token;
+    const tampered = token.slice(0, -1) + (token.endsWith('a') ? 'b' : 'a');
+
+    const res = await request(app)
+      .put('/progress')
+      .set('Authorization', `Bearer ${tampered}`)
+      .send({ completedLevels: [], bestScores: {}, currentLevelId: 'level_1' });
+
+    expect(res.status).toBe(401);
+    expect(res.body.success).toBe(false);
+  }, TIMEOUT);
 });

@@ -41,4 +41,10 @@ describe('UpsertLevelDefinitionUseCase', () => {
     const stored = await levels.getById('level_heart');
     expect(stored?.name).toBe('Actualizado');
   });
+
+  it('should_reject_level_when_difficulty_is_invalid', async () => {
+    await expect(
+      useCase.execute(aLevel().withDifficulty('extreme').buildProps()),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
 });

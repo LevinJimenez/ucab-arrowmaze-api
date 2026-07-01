@@ -71,4 +71,41 @@ describe('Level API — integration', () => {
     expect(res.status).toBe(404);
     expect(res.body.success).toBe(false);
   }, TIMEOUT);
+
+  it('GET /levels returns 200 with the list of levels', async () => {
+    const registerRes = await request(app)
+      .post('/auth/register')
+      .send({ username: 'admin', email: 'admin@example.com', password: 'password123' });
+    const token: string = registerRes.body.data.token;
+
+    await request(app)
+      .put('/levels/level_1')
+      .set('Authorization', `Bearer ${token}`)
+      .send(levelPayload);
+    await request(app)
+      .put('/levels/level_2')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ ...levelPayload, name: 'Test Level 2' });
+
+    const res = await request(app).get('/levels');
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveLength(2);
+  }, TIMEOUT);
+
+  it('PUT /levels/:id with invalid body returns 422', async () => {
+    const registerRes = await request(app)
+      .post('/auth/register')
+      .send({ username: 'admin', email: 'admin@example.com', password: 'password123' });
+    const token: string = registerRes.body.data.token;
+
+    const res = await request(app)
+      .put('/levels/level_1')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: '', data: { cells: [], arrows: [] } });
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+  }, TIMEOUT);
 });

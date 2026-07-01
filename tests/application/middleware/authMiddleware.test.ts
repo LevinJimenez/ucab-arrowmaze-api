@@ -52,4 +52,28 @@ describe('authMiddleware', () => {
     // Assert
     expect(res.status).toHaveBeenCalledWith(401);
   });
+
+  it('should_reject_with_401_when_scheme_is_not_bearer', () => {
+    // Arrange
+    const req = { headers: { authorization: 'Basic x' } } as AuthRequest;
+    const res = makeRes();
+
+    // Act
+    authMiddleware(req, res, vi.fn());
+
+    // Assert
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
+
+  it('should_reject_with_401_when_bearer_token_is_empty', () => {
+    // Arrange
+    const req = { headers: { authorization: 'Bearer ' } } as AuthRequest;
+    const res = makeRes();
+
+    // Act
+    authMiddleware(req, res, vi.fn());
+
+    // Assert
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
 });

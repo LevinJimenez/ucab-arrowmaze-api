@@ -3,6 +3,7 @@ import { LeaderboardMapper } from '../../../src/application/mappers/LeaderboardM
 import { ProgressMapper } from '../../../src/application/mappers/ProgressMapper';
 import { LevelMapper } from '../../../src/application/mappers/LevelMapper';
 import { PlayerProgress } from '../../../src/domain/entities/PlayerProgress';
+import { LevelDefinition } from '../../../src/domain/entities/LevelDefinition';
 import { aLeaderboardEntry } from '../../builders/LeaderboardEntryBuilder';
 import { aLevel } from '../../builders/LevelDefinitionBuilder';
 
@@ -37,6 +38,22 @@ describe('ProgressMapper', () => {
     expect(dto.bestScores).toEqual({ level_1: 900 });
     expect(dto.currentLevelId).toBe('level_2');
   });
+
+  it('should_expose_empty_object_when_progress_has_no_best_scores', () => {
+    // Arrange
+    const progress = new PlayerProgress({
+      userId: 'user-1',
+      completedLevels: [],
+      bestScores: new Map(),
+      currentLevelId: '',
+    });
+
+    // Act
+    const dto = ProgressMapper.toDto(progress);
+
+    // Assert
+    expect(dto.bestScores).toEqual({});
+  });
 });
 
 describe('LevelMapper', () => {
@@ -50,5 +67,18 @@ describe('LevelMapper', () => {
     // Assert
     expect(dto.id).toBe('level_heart');
     expect(dto.data.arrows).toHaveLength(1);
+  });
+
+  it('should_map_level_without_par_moves_when_not_provided', () => {
+    // Arrange
+    const props = aLevel().buildProps();
+    delete props.parMoves;
+    const level = new LevelDefinition(props);
+
+    // Act
+    const dto = LevelMapper.toDto(level);
+
+    // Assert
+    expect(dto.parMoves).toBeUndefined();
   });
 });

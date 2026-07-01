@@ -5,6 +5,8 @@ import {
   InvalidCredentialsError,
   EmailAlreadyRegisteredError,
   NotFoundError,
+  ValidationError,
+  UsernameAlreadyTakenError,
 } from '../../../src/domain/errors/DomainErrors';
 
 const makeRes = (): Response => {
@@ -57,5 +59,27 @@ describe('errorHandler', () => {
 
     // Assert
     expect(res.status).toHaveBeenCalledWith(500);
+  });
+
+  it('should_respond_422_when_validation_fails', () => {
+    // Arrange
+    const res = makeRes();
+
+    // Act
+    errorHandler(new ValidationError('Invalid input'), {} as Request, res, vi.fn());
+
+    // Assert
+    expect(res.status).toHaveBeenCalledWith(422);
+  });
+
+  it('should_respond_409_when_username_already_taken', () => {
+    // Arrange
+    const res = makeRes();
+
+    // Act
+    errorHandler(new UsernameAlreadyTakenError(), {} as Request, res, vi.fn());
+
+    // Assert
+    expect(res.status).toHaveBeenCalledWith(409);
   });
 });

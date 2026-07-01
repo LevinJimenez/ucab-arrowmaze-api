@@ -50,4 +50,25 @@ describe('GetLeaderboardUseCase', () => {
     expect(ranking).toHaveLength(10);
     expect(ranking[0].score).toBe(14);
   });
+
+  it('should_return_empty_ranking_when_level_has_no_entries', async () => {
+    // Act
+    const ranking = await useCase.execute({ levelId: 'level_without_entries' });
+
+    // Assert
+    expect(ranking).toEqual([]);
+  });
+
+  it('should_only_rank_entries_of_the_requested_level_when_multiple_levels_exist', async () => {
+    // Arrange
+    await leaderboard.addEntry(aLeaderboardEntry().forUser('1', 'alice').onLevel('level_1').withScore(900).build());
+    await leaderboard.addEntry(aLeaderboardEntry().forUser('2', 'bob').onLevel('level_2').withScore(999).build());
+
+    // Act
+    const ranking = await useCase.execute({ levelId: 'level_1' });
+
+    // Assert — la entrada de level_2 (con score más alto) no contamina el ranking.
+    expect(ranking).toHaveLength(1);
+    expect(ranking[0].username).toBe('alice');
+  });
 });

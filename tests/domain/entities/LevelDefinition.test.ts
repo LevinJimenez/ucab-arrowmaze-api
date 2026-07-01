@@ -50,4 +50,27 @@ describe('LevelDefinition', () => {
   it('should_reject_level_when_it_has_no_arrows', () => {
     expect(() => new LevelDefinition(aLevel().withoutArrows().buildProps())).toThrow(ValidationError);
   });
+
+  it('should_reject_level_when_par_moves_is_negative', () => {
+    expect(() => new LevelDefinition(aLevel().withParMoves(-5).buildProps())).toThrow(ValidationError);
+  });
+
+  it('should_count_cells_and_arrows', () => {
+    // Arrange — nivel con conteos distintos al fixture por defecto del builder.
+    const props = aLevel().buildProps();
+    props.data = {
+      cells: [[0, 0], [0, 1], [1, 0], [1, 1]],
+      arrows: [
+        { id: 'a1', path: [[0, 0], [0, 1]], color: '#EF476F' },
+        { id: 'a2', path: [[1, 0], [1, 1]], color: '#118AB2' },
+      ],
+    };
+
+    // Act
+    const level = new LevelDefinition(props);
+
+    // Assert
+    expect(level.cellCount()).toBe(4);
+    expect(level.arrowCount()).toBe(2);
+  });
 });
