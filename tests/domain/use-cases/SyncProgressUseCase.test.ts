@@ -58,4 +58,14 @@ describe('SyncProgressUseCase', () => {
     expect(recorded[0].score).toBe(800);
     expect(recorded[0].username).toBe('player1');
   });
+
+  it('should_default_moves_and_time_to_zero_when_last_run_omits_them', async () => {
+    // Arrange + Act — última partida CON levelId+score pero SIN moves/time
+    await useCase.execute({ ...baseInput, lastLevelId: 'level_2', lastScore: 700 });
+
+    // Assert — la entrada se registra con moves/time por defecto en 0 (estado del fake)
+    const [recorded] = leaderboard.getAll();
+    expect(recorded.moves).toBe(0);
+    expect(recorded.timeSeconds).toBe(0);
+  });
 });
