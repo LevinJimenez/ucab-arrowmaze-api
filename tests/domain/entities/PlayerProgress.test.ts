@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { PlayerProgress } from '../../../src/domain/entities/PlayerProgress';
+import { ValidationError } from '../../../src/domain/errors/DomainErrors';
 import { aPlayerProgress } from '../../builders/PlayerProgressBuilder';
 
 describe('PlayerProgress', () => {
@@ -36,5 +38,15 @@ describe('PlayerProgress', () => {
 
     // Act + Assert
     expect(progress.getBestScore('level_99')).toBeUndefined();
+  });
+
+  it('should_reject_progress_when_user_id_is_empty', () => {
+    expect(() => new PlayerProgress(aPlayerProgress().withUserId('   ').buildProps())).toThrow(ValidationError);
+  });
+
+  it('should_reject_progress_when_a_best_score_is_negative', () => {
+    expect(() =>
+      new PlayerProgress(aPlayerProgress().withBestScores(new Map([['level_1', -1]])).buildProps()),
+    ).toThrow(ValidationError);
   });
 });
