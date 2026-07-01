@@ -23,6 +23,7 @@ import { AuthenticateUserUseCase } from './domain/use-cases/AuthenticateUserUseC
 import { SyncProgressUseCase } from './domain/use-cases/SyncProgressUseCase';
 import { GetLeaderboardUseCase, GetLeaderboardInput } from './domain/use-cases/GetLeaderboardUseCase';
 import { GetLevelDefinitionsUseCase } from './domain/use-cases/GetLevelDefinitionsUseCase';
+import { GetLevelByIdUseCase } from './domain/use-cases/GetLevelByIdUseCase';
 import { UpsertLevelDefinitionUseCase } from './domain/use-cases/UpsertLevelDefinitionUseCase';
 import { IUseCase } from './domain/interfaces/IUseCase';
 
@@ -88,9 +89,8 @@ const getLeaderboardUseCase = new CachingUseCaseDecorator(
   logger,
 );
 
-// GetLevelDefinitions NO lleva AOP: se inyecta concreto porque LevelController
-// usa getById(), que vive fuera de IUseCase.
-const getLevelDefinitionsUseCase = new GetLevelDefinitionsUseCase(levelRepo);
+const getLevelDefinitionsUseCase = withAop(new GetLevelDefinitionsUseCase(levelRepo), 'GetLevelDefinitions');
+const getLevelByIdUseCase = withAop(new GetLevelByIdUseCase(levelRepo), 'GetLevelById');
 const upsertLevelDefinitionUseCase = withAop(
   new UpsertLevelDefinitionUseCase(levelRepo),
   'UpsertLevelDefinition',
@@ -102,7 +102,7 @@ const upsertLevelDefinitionUseCase = withAop(
 const authController = new AuthController(registerUseCase, authenticateUseCase, tokenService);
 const progressController = new ProgressController(syncProgressUseCase, progressRepo);
 const leaderboardController = new LeaderboardController(getLeaderboardUseCase);
-const levelController = new LevelController(getLevelDefinitionsUseCase, upsertLevelDefinitionUseCase);
+const levelController = new LevelController(getLevelDefinitionsUseCase, getLevelByIdUseCase, upsertLevelDefinitionUseCase);
 
 const authMiddleware = createAuthMiddleware(tokenService);
 
