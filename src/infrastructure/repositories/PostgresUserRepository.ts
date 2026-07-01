@@ -43,12 +43,12 @@ export class PostgresUserRepository implements IUserRepository {
       return this.toEntity(record);
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        const target = error.meta?.target as string[] | undefined;
-        const field = target?.[0];
-        if (field === 'email') {
+        const target = error.meta?.target;
+        const fields = Array.isArray(target) ? target.join(',') : String(target ?? '');
+        if (fields.includes('email')) {
           throw new EmailAlreadyRegisteredError();
         }
-        if (field === 'username') {
+        if (fields.includes('username')) {
           throw new UsernameAlreadyTakenError();
         }
       }
