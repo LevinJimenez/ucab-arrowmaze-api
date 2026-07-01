@@ -35,6 +35,7 @@ import { createProgressRouter } from './application/routes/progressRoutes';
 import { createLeaderboardRouter } from './application/routes/leaderboardRoutes';
 import { createLevelRouter } from './application/routes/levelRoutes';
 import { errorHandler } from './application/middleware/errorHandler';
+import { setupSwagger } from './config/swagger';
 
 const prisma = new PrismaClient();
 const app: Application = express();
@@ -108,6 +109,8 @@ app.use('/levels', createLevelRouter(levelController));
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+setupSwagger(app);
 
 app.use(errorHandler);
 
