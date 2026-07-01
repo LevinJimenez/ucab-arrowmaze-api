@@ -144,3 +144,65 @@ describe('CachingUseCaseDecorator', () => {
     vi.useRealTimers();
   });
 });
+
+describe('AOP decorators — security regression (password redaction)', () => {
+  let logger: ILogger;
+
+  beforeEach(() => {
+    logger = makeLogger();
+  });
+
+  it('should_not_log_plaintext_password_when_input_is_sensitive', async () => {
+    // Arrange
+    type Credentials = { username: string; password: string };
+    const inner: IUseCase<Credentials, string> = { execute: vi.fn().mockResolvedValue('ok') };
+    const decorated = new LoggingUseCaseDecorator(inner, logger, 'LoginUseCase');
+
+    // Act
+    await decorated.execute({ username: 'alice', password: 'secret123' });
+
+    // Assert — password en claro NUNCA debe aparecer en los logs
+    expect(logger.info).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('Executing'),
+      expect.objectContaining({ input: expect.objectContaining({ password: '[REDACTED]' }) }),
+    );
+    const [, meta] = vi.mocked(logger.info).mock.calls[0] as [string, Record<string, unknown>];
+    expect(JSON.stringify(meta)).not.toContain('secret123');
+  });
+
+  it('should_pass_non_sensitive_fields_unchanged', async () => {
+    // Arrange
+    type SafeInput = { username: string; score: number };
+    const inner: IUseCase<SafeInput, string> = { execute: vi.fn().mockResolvedValue('ok') };
+    const decorated = new LoggingUseCaseDecorator(inner, logger, 'SafeUseCase');
+
+    // Act
+    await decorated.execute({ username: 'alice', score: 42 });
+
+    // Assert — campos no sensibles llegan al log sin modificar
+    expect(logger.info).toHaveBeenNthCalledWith(
+      1,
+      expect.any(String),
+      expect.objectContaining({ input: expect.objectContaining({ username: 'alice', score: 42 }) }),
+    );
+  });
+
+  it('should_not_log_plaintext_password_in_exception_handler_on_failure', async () => {
+    // Arrange
+    type Credentials = { username: string; password: string };
+    const inner: IUseCase<Credentials, string> = {
+      execute: vi.fn().mockRejectedValue(new Error('auth failed')),
+    };
+    const decorated = new ExceptionHandlingUseCaseDecorator(inner, logger, 'LoginUseCase');
+
+    // Act + Assert
+    await expect(decorated.execute({ username: 'alice', password: 'secret123' })).rejects.toThrow('auth failed');
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('Failed'),
+      expect.objectContaining({ input: expect.objectContaining({ password: '[REDACTED]' }) }),
+    );
+    const [, meta] = vi.mocked(logger.error).mock.calls[0] as [string, Record<string, unknown>];
+    expect(JSON.stringify(meta)).not.toContain('secret123');
+  });
+});
