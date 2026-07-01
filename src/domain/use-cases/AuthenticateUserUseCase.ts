@@ -17,6 +17,11 @@ export interface IPasswordVerifier {
   verify(password: string, hash: string): Promise<boolean>;
 }
 
+// Hash opaco que nunca coincide. Verificar contra él cuando el usuario NO existe
+// mantiene el tiempo de respuesta ~constante, para que no revele si un email está
+// registrado (mitiga la enumeración de usuarios). No es lógica bcrypt: es un literal.
+const DUMMY_PASSWORD_HASH = '$2b$10$6chFXPkpuSi3D3Xh6s3.4.bDka7jkPq2XoGOz83PaOKKXttrfmqGO';
+
 export class AuthenticateUserUseCase implements IUseCase<AuthenticateUserInput, AuthenticateUserOutput> {
   constructor(
     private readonly userRepository: IUserRepository,
@@ -25,12 +30,12 @@ export class AuthenticateUserUseCase implements IUseCase<AuthenticateUserInput, 
 
   public async execute(input: AuthenticateUserInput): Promise<AuthenticateUserOutput> {
     const user = await this.userRepository.findByEmail(input.email);
-    if (!user) {
-      throw new InvalidCredentialsError();
-    }
+    const isValid = await this.passwordVerifier.verify(
+      input.password,
+      user?.passwordHash ?? DUMMY_PASSWORD_HASH,
+    );
 
-    const isValid = await this.passwordVerifier.verify(input.password, user.passwordHash);
-    if (!isValid) {
+    if (!user || !isValid) {
       throw new InvalidCredentialsError();
     }
 
