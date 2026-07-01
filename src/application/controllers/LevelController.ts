@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { GetLevelDefinitionsUseCase } from '../../domain/use-cases/GetLevelDefinitionsUseCase';
 import { UpsertLevelInput } from '../../domain/use-cases/UpsertLevelDefinitionUseCase';
 import { LevelDefinition } from '../../domain/entities/LevelDefinition';
 import { IUseCase } from '../../domain/interfaces/IUseCase';
@@ -26,7 +25,8 @@ const upsertSchema = z.object({
 
 export class LevelController {
   constructor(
-    private readonly getLevelDefinitionsUseCase: GetLevelDefinitionsUseCase,
+    private readonly getLevelDefinitionsUseCase: IUseCase<void, LevelDefinition[]>,
+    private readonly getLevelByIdUseCase: IUseCase<string, LevelDefinition | null>,
     private readonly upsertLevelDefinitionUseCase: IUseCase<UpsertLevelInput, LevelDefinition>,
   ) {}
 
@@ -42,7 +42,7 @@ export class LevelController {
       return;
     }
 
-    const level = await this.getLevelDefinitionsUseCase.getById(id);
+    const level = await this.getLevelByIdUseCase.execute(id);
     if (!level) {
       ResponseFactory.error(res, 'Not found', 404);
       return;
