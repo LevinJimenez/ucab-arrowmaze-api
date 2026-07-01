@@ -1,5 +1,6 @@
 import { IUseCase } from '../../domain/interfaces/IUseCase';
 import { ILogger } from '../../domain/interfaces/ILogger';
+import { redactSensitive } from './redactSensitive';
 
 /**
  * Aspecto de Manejo Centralizado de Excepciones (AOP por Decorator).
@@ -18,7 +19,7 @@ export class ExceptionHandlingUseCaseDecorator<TInput, TOutput> implements IUseC
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error(`[${this.useCaseName}] Failed`, {
-        input,
+        input: redactSensitive(input),
         error: err.message,
         stack: err.stack,
       });

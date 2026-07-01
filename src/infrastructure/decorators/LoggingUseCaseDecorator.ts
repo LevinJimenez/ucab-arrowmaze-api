@@ -1,5 +1,6 @@
 import { IUseCase } from '../../domain/interfaces/IUseCase';
 import { ILogger } from '../../domain/interfaces/ILogger';
+import { redactSensitive } from './redactSensitive';
 
 /**
  * Aspecto de Logging/Trazabilidad (AOP por Decorator).
@@ -14,12 +15,12 @@ export class LoggingUseCaseDecorator<TInput, TOutput> implements IUseCase<TInput
 
   public async execute(input: TInput): Promise<TOutput> {
     const start = Date.now();
-    this.logger.info(`[${this.useCaseName}] Executing`, { input });
+    this.logger.info(`[${this.useCaseName}] Executing`, { input: redactSensitive(input) });
 
     const result = await this.inner.execute(input);
 
     const duration = Date.now() - start;
-    this.logger.info(`[${this.useCaseName}] Completed in ${duration}ms`, { result });
+    this.logger.info(`[${this.useCaseName}] Completed in ${duration}ms`, { result: redactSensitive(result) });
 
     return result;
   }
