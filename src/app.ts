@@ -11,6 +11,7 @@ import { PostgresLevelDefinitionRepository } from './infrastructure/repositories
 import { BcryptPasswordService } from './infrastructure/services/BcryptPasswordService';
 import { UuidIdGenerator } from './infrastructure/services/UuidIdGenerator';
 import { ConsoleLogger } from './infrastructure/services/ConsoleLogger';
+import { AuthFacade } from './infrastructure/services/AuthFacade';
 import { PerLevelLeaderboardStrategy } from './infrastructure/strategies/PerLevelLeaderboardStrategy';
 
 import { LoggingUseCaseDecorator } from './infrastructure/decorators/LoggingUseCaseDecorator';
@@ -35,6 +36,7 @@ import { createProgressRouter } from './application/routes/progressRoutes';
 import { createLeaderboardRouter } from './application/routes/leaderboardRoutes';
 import { createLevelRouter } from './application/routes/levelRoutes';
 import { errorHandler } from './application/middleware/errorHandler';
+import { createAuthMiddleware } from './application/middleware/authMiddleware';
 import { setupSwagger } from './config/swagger';
 
 const prisma = new PrismaClient();
@@ -48,6 +50,7 @@ app.use(express.json());
 const logger = new ConsoleLogger();
 const bcryptService = new BcryptPasswordService();
 const idGenerator = new UuidIdGenerator();
+const tokenService = new AuthFacade();
 const userRepo = new PostgresUserRepository(prisma);
 const progressRepo = new PostgresProgressRepository(prisma);
 const leaderboardRepo = new PostgresLeaderboardRepository(prisma);
@@ -96,15 +99,17 @@ const upsertLevelDefinitionUseCase = withAop(
 // --- Controllers ---
 // Los controllers dependen de IUseCase<I, O>; los use cases decorados con AOP
 // son IUseCase<I, O>, por lo que el wiring no necesita ningún cast.
-const authController = new AuthController(registerUseCase, authenticateUseCase);
+const authController = new AuthController(registerUseCase, authenticateUseCase, tokenService);
 const progressController = new ProgressController(syncProgressUseCase, progressRepo);
 const leaderboardController = new LeaderboardController(getLeaderboardUseCase);
 const levelController = new LevelController(getLevelDefinitionsUseCase, upsertLevelDefinitionUseCase);
 
+const authMiddleware = createAuthMiddleware(tokenService);
+
 app.use('/auth', createAuthRouter(authController));
-app.use('/progress', createProgressRouter(progressController));
+app.use('/progress', createProgressRouter(progressController, authMiddleware));
 app.use('/leaderboard', createLeaderboardRouter(leaderboardController));
-app.use('/levels', createLevelRouter(levelController));
+app.use('/levels', createLevelRouter(levelController, authMiddleware));
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

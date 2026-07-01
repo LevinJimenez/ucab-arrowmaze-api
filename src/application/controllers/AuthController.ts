@@ -1,11 +1,10 @@
 import { Request, Response } from 'express';
-import jwt, { SignOptions } from 'jsonwebtoken';
 import { z } from 'zod';
 import { RegisterUserInput, RegisterUserOutput } from '../../domain/use-cases/RegisterUserUseCase';
 import { AuthenticateUserInput, AuthenticateUserOutput } from '../../domain/use-cases/AuthenticateUserUseCase';
 import { IUseCase } from '../../domain/interfaces/IUseCase';
+import { ITokenService } from '../../domain/interfaces/ITokenService';
 import { ResponseFactory } from '../factories/ResponseFactory';
-import { env } from '../../config/env';
 
 const registerSchema = z.object({
   username: z.string().min(3).max(30),
@@ -22,6 +21,7 @@ export class AuthController {
   constructor(
     private readonly registerUseCase: IUseCase<RegisterUserInput, RegisterUserOutput>,
     private readonly authenticateUseCase: IUseCase<AuthenticateUserInput, AuthenticateUserOutput>,
+    private readonly tokenService: ITokenService,
   ) {}
 
   public register = async (req: Request, res: Response): Promise<void> => {
@@ -32,7 +32,7 @@ export class AuthController {
     }
 
     const user = await this.registerUseCase.execute(parsed.data);
-    const token = this.generateToken(user.id, user.username);
+    const token = this.tokenService.generateToken(user.id, user.username);
 
     ResponseFactory.created(res, { user, token });
   };
@@ -45,13 +45,8 @@ export class AuthController {
     }
 
     const payload = await this.authenticateUseCase.execute(parsed.data);
-    const token = this.generateToken(payload.userId, payload.username);
+    const token = this.tokenService.generateToken(payload.userId, payload.username);
 
     ResponseFactory.success(res, { user: payload, token });
   };
-
-  private generateToken(userId: string, username: string): string {
-    const options: SignOptions = { expiresIn: env.JWT_EXPIRES_IN as SignOptions['expiresIn'] };
-    return jwt.sign({ userId, username }, env.JWT_SECRET, options);
-  }
 }
