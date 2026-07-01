@@ -68,4 +68,35 @@ describe('Auth API — integration', () => {
     expect(res.status).toBe(401);
     expect(res.body.success).toBe(false);
   }, TIMEOUT);
+
+  it('POST /auth/register with duplicate username returns 409', async () => {
+    await request(app)
+      .post('/auth/register')
+      .send({ username: 'alice', email: 'alice@example.com', password: 'password123' });
+
+    const res = await request(app)
+      .post('/auth/register')
+      .send({ username: 'alice', email: 'other@example.com', password: 'password123' });
+
+    expect(res.status).toBe(409);
+    expect(res.body.success).toBe(false);
+  }, TIMEOUT);
+
+  it('POST /auth/register with invalid body returns 422', async () => {
+    const res = await request(app)
+      .post('/auth/register')
+      .send({ username: 'ab', email: 'not-an-email', password: '123' });
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+  }, TIMEOUT);
+
+  it('POST /auth/login with invalid body returns 422', async () => {
+    const res = await request(app)
+      .post('/auth/login')
+      .send({ email: 'not-an-email', password: '' });
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+  }, TIMEOUT);
 });
