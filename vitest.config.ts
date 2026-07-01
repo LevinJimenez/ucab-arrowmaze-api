@@ -19,8 +19,10 @@ export default defineConfig({
         'src/domain/**',
         'src/application/mappers/**',
         'src/application/middleware/**',
+        'src/application/factories/**',
         'src/infrastructure/strategies/**',
         'src/infrastructure/decorators/**',
+        'src/infrastructure/services/**',
       ],
       thresholds: {
         // El núcleo de negocio (entidades + casos de uso) exige cobertura alta.
