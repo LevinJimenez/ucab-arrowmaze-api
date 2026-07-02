@@ -134,6 +134,31 @@ Open **`http://localhost:3000/api-docs`** to explore the interactive API documen
 
 ---
 
+## Run with Docker
+
+**Prerequisite:** Docker (with Compose) — no Node, pnpm or Postgres install needed.
+
+```bash
+docker compose up --build
+```
+
+This builds the API image (Prisma client generated for the Linux container, TypeScript compiled) and starts its own Postgres 16 container. On startup, the API applies the schema with `prisma db push` before listening — no manual migration step required. The stack uses `.env.docker` (committed, dev-only secrets) and its own named volume, completely independent of any external database (e.g. Supabase) you may have configured in `.env`.
+
+Once it's up:
+
+- API: **`http://localhost:3000`**
+- Interactive docs: **`http://localhost:3000/api-docs`**
+- Health check: **`http://localhost:3000/health`**
+
+To stop the stack:
+
+```bash
+docker compose down        # stop containers, keep the Postgres volume
+docker compose down -v     # stop containers and wipe the Postgres volume
+```
+
+---
+
 ## Running Tests
 
 The test suite is split into two independent layers:
