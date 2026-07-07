@@ -4,7 +4,7 @@ import { ILeaderboardStrategy } from '../../domain/interfaces/ILeaderboardStrate
 export class PerLevelLeaderboardStrategy implements ILeaderboardStrategy {
   public calculateRanking(entries: LeaderboardEntry[], limit: number): LeaderboardEntry[] {
     return [...entries]
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => b.score.value - a.score.value)
       .slice(0, limit);
   }
 }

@@ -8,8 +8,8 @@ export class CombinedLeaderboardStrategy implements ILeaderboardStrategy {
   public calculateRanking(entries: LeaderboardEntry[], limit: number): LeaderboardEntry[] {
     const scored = entries.map((entry) => {
       const maxScore = 1000;
-      const normalizedScore = entry.score / maxScore;
-      const efficiency = entry.moves > 0 ? 1 / entry.moves : 0;
+      const normalizedScore = entry.score.value / maxScore;
+      const efficiency = entry.moves.value > 0 ? 1 / entry.moves.value : 0;
       const combinedScore =
         this.scoreWeight * normalizedScore +
         this.efficiencyWeight * efficiency;

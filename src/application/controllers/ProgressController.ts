@@ -7,6 +7,7 @@ import { IProgressRepository } from '../../domain/interfaces/IProgressRepository
 import { AuthRequest } from '../middleware/authMiddleware';
 import { ResponseFactory } from '../factories/ResponseFactory';
 import { ProgressMapper } from '../mappers/ProgressMapper';
+import { UserId } from '../../domain/value-objects/UserId';
 
 const syncSchema = z.object({
   completedLevels: z.array(z.string().min(1)),
@@ -25,7 +26,7 @@ export class ProgressController {
   ) {}
 
   public getProgress = async (req: AuthRequest, res: Response): Promise<void> => {
-    const userId = req.userId as string;
+    const userId = UserId.create(req.userId as string);
     const progress = await this.progressRepository.getByUserId(userId);
 
     if (!progress) {

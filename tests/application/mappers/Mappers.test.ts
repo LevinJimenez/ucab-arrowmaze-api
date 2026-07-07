@@ -6,6 +6,7 @@ import { PlayerProgress } from '../../../src/domain/entities/PlayerProgress';
 import { LevelDefinition } from '../../../src/domain/entities/LevelDefinition';
 import { aLeaderboardEntry } from '../../builders/LeaderboardEntryBuilder';
 import { aLevel } from '../../builders/LevelDefinitionBuilder';
+import { aPlayerProgress } from '../../builders/PlayerProgressBuilder';
 
 describe('LeaderboardMapper', () => {
   it('should_expose_ranked_at_as_iso_string_when_mapping_entry', () => {
@@ -24,12 +25,12 @@ describe('LeaderboardMapper', () => {
 describe('ProgressMapper', () => {
   it('should_expose_best_scores_as_plain_object_when_mapping_progress', () => {
     // Arrange
-    const progress = new PlayerProgress({
-      userId: 'user-1',
-      completedLevels: ['level_1'],
-      bestScores: new Map([['level_1', 900]]),
-      currentLevelId: 'level_2',
-    });
+    const progress = aPlayerProgress()
+      .withUserId('user-1')
+      .withCompletedLevels(['level_1'])
+      .withBestScores(new Map([['level_1', 900]]))
+      .withCurrentLevelId('level_2')
+      .build();
 
     // Act
     const dto = ProgressMapper.toDto(progress);
@@ -41,12 +42,12 @@ describe('ProgressMapper', () => {
 
   it('should_expose_empty_object_when_progress_has_no_best_scores', () => {
     // Arrange
-    const progress = new PlayerProgress({
-      userId: 'user-1',
-      completedLevels: [],
-      bestScores: new Map(),
-      currentLevelId: '',
-    });
+    const progress = aPlayerProgress()
+      .withUserId('user-1')
+      .withCompletedLevels([])
+      .withBestScores(new Map())
+      .withCurrentLevelId('level_1')
+      .build();
 
     // Act
     const dto = ProgressMapper.toDto(progress);

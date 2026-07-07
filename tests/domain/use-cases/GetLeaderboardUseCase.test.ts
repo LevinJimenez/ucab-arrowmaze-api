@@ -9,7 +9,7 @@ import { aLeaderboardEntry } from '../../builders/LeaderboardEntryBuilder';
 // (FASE 5); aquí basta una real, pura y determinista para verificar el use case.
 class SortByScoreStrategy implements ILeaderboardStrategy {
   public calculateRanking(entries: LeaderboardEntry[], limit: number): LeaderboardEntry[] {
-    return [...entries].sort((a, b) => b.score - a.score).slice(0, limit);
+    return [...entries].sort((a, b) => b.score.value - a.score.value).slice(0, limit);
   }
 }
 
@@ -33,14 +33,14 @@ describe('GetLeaderboardUseCase', () => {
 
     // Assert — salida observable, sin espiar la estrategia.
     expect(ranking).toHaveLength(2);
-    expect(ranking[0].username).toBe('alice');
-    expect(ranking[1].username).toBe('bob');
+    expect(ranking[0].username.value).toBe('alice');
+    expect(ranking[1].username.value).toBe('bob');
   });
 
   it('should_return_at_most_ten_players_when_limit_is_not_specified', async () => {
     // Arrange
     for (let i = 0; i < 15; i += 1) {
-      await leaderboard.addEntry(aLeaderboardEntry().forUser(`u${i}`, `p${i}`).withScore(i).build());
+      await leaderboard.addEntry(aLeaderboardEntry().forUser(`u${i}`, `player${i}`).withScore(i).build());
     }
 
     // Act
@@ -48,7 +48,7 @@ describe('GetLeaderboardUseCase', () => {
 
     // Assert — el límite por defecto (10) se observa por la SALIDA.
     expect(ranking).toHaveLength(10);
-    expect(ranking[0].score).toBe(14);
+    expect(ranking[0].score.value).toBe(14);
   });
 
   it('should_return_empty_ranking_when_level_has_no_entries', async () => {
@@ -69,6 +69,6 @@ describe('GetLeaderboardUseCase', () => {
 
     // Assert — la entrada de level_2 (con score más alto) no contamina el ranking.
     expect(ranking).toHaveLength(1);
-    expect(ranking[0].username).toBe('alice');
+    expect(ranking[0].username.value).toBe('alice');
   });
 });
