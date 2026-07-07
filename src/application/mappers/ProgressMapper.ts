@@ -10,10 +10,10 @@ export interface ProgressDto {
 export class ProgressMapper {
   static toDto(progress: PlayerProgress): ProgressDto {
     return {
-      userId: progress.userId,
-      completedLevels: progress.completedLevels,
-      bestScores: Object.fromEntries(progress.bestScores),
-      currentLevelId: progress.currentLevelId,
+      userId: progress.userId.value,
+      completedLevels: progress.completedLevels.map((l) => l.value),
+      bestScores: Object.fromEntries(progress.bestScores.map((bs) => [bs.levelId.value, bs.score.value])),
+      currentLevelId: progress.currentLevelId.value,
     };
   }
 }
