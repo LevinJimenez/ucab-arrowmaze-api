@@ -3,12 +3,26 @@ import { TotalScoreLeaderboardStrategy } from '../../../src/infrastructure/strat
 import { PerLevelLeaderboardStrategy } from '../../../src/infrastructure/strategies/PerLevelLeaderboardStrategy';
 import { CombinedLeaderboardStrategy } from '../../../src/infrastructure/strategies/CombinedLeaderboardStrategy';
 import { LeaderboardEntry } from '../../../src/domain/entities/LeaderboardEntry';
+import { UserId } from '../../../src/domain/value-objects/UserId';
+import { Username } from '../../../src/domain/value-objects/Username';
+import { LevelId } from '../../../src/domain/value-objects/LevelId';
+import { Score } from '../../../src/domain/value-objects/Score';
+import { Moves } from '../../../src/domain/value-objects/Moves';
+import { TimeSeconds } from '../../../src/domain/value-objects/TimeSeconds';
 
 const makeEntry = (
   userId: string, username: string, levelId: string,
   score: number, moves: number,
 ): LeaderboardEntry =>
-  new LeaderboardEntry({ userId, username, levelId, score, moves, timeSeconds: 30, rankedAt: new Date() });
+  new LeaderboardEntry({
+    userId: UserId.create(userId),
+    username: Username.create(username),
+    levelId: LevelId.create(levelId),
+    score: Score.create(score),
+    moves: Moves.create(moves),
+    timeSeconds: TimeSeconds.create(30),
+    rankedAt: new Date(),
+  });
 
 // alice: level_1 score=900 moves=5 | level_2 score=850 moves=4
 // bob:   level_1 score=800 moves=6
@@ -29,10 +43,10 @@ describe('PerLevelLeaderboardStrategy', () => {
 
     // Assert — orden completo verificado, no solo la primera posición
     expect(result).toHaveLength(4);
-    expect(result[0].score).toBe(900);
-    expect(result[1].score).toBe(850);
-    expect(result[2].score).toBe(800);
-    expect(result[3].score).toBe(700);
+    expect(result[0].score.value).toBe(900);
+    expect(result[1].score.value).toBe(850);
+    expect(result[2].score.value).toBe(800);
+    expect(result[3].score.value).toBe(700);
   });
 
   it('should_return_only_top_n_entries_when_limit_is_smaller_than_count', () => {
@@ -41,8 +55,8 @@ describe('PerLevelLeaderboardStrategy', () => {
 
     // Assert
     expect(result).toHaveLength(2);
-    expect(result[0].score).toBe(900);
-    expect(result[1].score).toBe(850);
+    expect(result[0].score.value).toBe(900);
+    expect(result[1].score.value).toBe(850);
   });
 
   it('should_not_mutate_the_original_entries_array', () => {
@@ -53,7 +67,7 @@ describe('PerLevelLeaderboardStrategy', () => {
     strategy.calculateRanking(entries, 10);
 
     // Assert
-    expect(entries[0].score).toBe(original[0].score);
+    expect(entries[0].score.value).toBe(original[0].score.value);
   });
 });
 
@@ -66,9 +80,9 @@ describe('TotalScoreLeaderboardStrategy', () => {
 
     // Assert — orden completo: alice(1750) > bob(800) > carol(700)
     expect(result).toHaveLength(3);
-    expect(result[0].username).toBe('alice');
-    expect(result[1].username).toBe('bob');
-    expect(result[2].username).toBe('carol');
+    expect(result[0].username.value).toBe('alice');
+    expect(result[1].username.value).toBe('bob');
+    expect(result[2].username.value).toBe('carol');
   });
 
   it('should_return_single_user_when_limit_is_one', () => {
@@ -77,7 +91,7 @@ describe('TotalScoreLeaderboardStrategy', () => {
 
     // Assert
     expect(result).toHaveLength(1);
-    expect(result[0].username).toBe('alice');
+    expect(result[0].username.value).toBe('alice');
   });
 
   it('should_return_empty_array_when_no_entries_provided', () => {
@@ -103,12 +117,12 @@ describe('CombinedLeaderboardStrategy', () => {
 
     // Assert — orden completo verificado con la fórmula ponderada
     expect(result).toHaveLength(4);
-    expect(result[0].username).toBe('alice');
-    expect(result[0].levelId).toBe('level_1');
-    expect(result[1].username).toBe('alice');
-    expect(result[1].levelId).toBe('level_2');
-    expect(result[2].username).toBe('bob');
-    expect(result[3].username).toBe('carol');
+    expect(result[0].username.value).toBe('alice');
+    expect(result[0].levelId.value).toBe('level_1');
+    expect(result[1].username.value).toBe('alice');
+    expect(result[1].levelId.value).toBe('level_2');
+    expect(result[2].username.value).toBe('bob');
+    expect(result[3].username.value).toBe('carol');
   });
 
   it('should_favour_fewer_moves_over_more_moves_when_scores_are_close', () => {
@@ -120,8 +134,8 @@ describe('CombinedLeaderboardStrategy', () => {
     const result = strategy.calculateRanking([b, a], 10);
 
     // Assert
-    expect(result[0].username).toBe('alice');
-    expect(result[1].username).toBe('bob');
+    expect(result[0].username.value).toBe('alice');
+    expect(result[1].username.value).toBe('bob');
   });
 
   it('should_respect_limit_when_limit_is_smaller_than_count', () => {
@@ -130,8 +144,8 @@ describe('CombinedLeaderboardStrategy', () => {
 
     // Assert
     expect(result).toHaveLength(2);
-    expect(result[0].username).toBe('alice');
-    expect(result[0].levelId).toBe('level_1');
+    expect(result[0].username.value).toBe('alice');
+    expect(result[0].levelId.value).toBe('level_1');
   });
 
   it('should_assign_zero_efficiency_when_entry_has_zero_moves', () => {
@@ -143,7 +157,7 @@ describe('CombinedLeaderboardStrategy', () => {
     const result = strategy.calculateRanking([zeroMoves, normal], 10);
 
     // Assert: zero (combined=0.7*0.9+0=0.63) > alice (combined=0.7*0.1+0.3*1=0.37)
-    expect(result[0].username).toBe('zero');
-    expect(result[1].username).toBe('alice');
+    expect(result[0].username.value).toBe('zero');
+    expect(result[1].username.value).toBe('alice');
   });
 });

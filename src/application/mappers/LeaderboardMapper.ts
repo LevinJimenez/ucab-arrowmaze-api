@@ -13,12 +13,12 @@ export interface LeaderboardEntryDto {
 export class LeaderboardMapper {
   static toDto(entry: LeaderboardEntry): LeaderboardEntryDto {
     return {
-      userId: entry.userId,
-      username: entry.username,
-      levelId: entry.levelId,
-      score: entry.score,
-      moves: entry.moves,
-      timeSeconds: entry.timeSeconds,
+      userId: entry.userId.value,
+      username: entry.username.value,
+      levelId: entry.levelId.value,
+      score: entry.score.value,
+      moves: entry.moves.value,
+      timeSeconds: entry.timeSeconds.value,
       rankedAt: entry.rankedAt.toISOString(),
     };
   }

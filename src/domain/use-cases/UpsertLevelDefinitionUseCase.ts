@@ -1,13 +1,18 @@
-import { LevelDefinition, LevelData } from '../entities/LevelDefinition';
+import { LevelDefinition } from '../entities/LevelDefinition';
 import { ILevelDefinitionRepository } from '../interfaces/ILevelDefinitionRepository';
 import { IUseCase } from '../interfaces/IUseCase';
+import { LevelId } from '../value-objects/LevelId';
+import { LevelName } from '../value-objects/LevelName';
+import { Difficulty } from '../value-objects/Difficulty';
+import { ParMoves } from '../value-objects/ParMoves';
+import { LevelData, LevelDataProps } from '../value-objects/LevelData';
 
 export interface UpsertLevelInput {
   id: string;
   name: string;
   difficulty?: string;
   parMoves?: number;
-  data: LevelData;
+  data: LevelDataProps;
 }
 
 export class UpsertLevelDefinitionUseCase implements IUseCase<UpsertLevelInput, LevelDefinition> {
@@ -16,13 +21,12 @@ export class UpsertLevelDefinitionUseCase implements IUseCase<UpsertLevelInput, 
   ) {}
 
   public async execute(input: UpsertLevelInput): Promise<LevelDefinition> {
-    // El constructor de LevelDefinition valida las invariantes del dominio.
     const level = new LevelDefinition({
-      id: input.id,
-      name: input.name,
-      difficulty: input.difficulty,
-      parMoves: input.parMoves,
-      data: input.data,
+      id: LevelId.create(input.id),
+      name: LevelName.create(input.name),
+      difficulty: Difficulty.create(input.difficulty ?? 'medium'),
+      parMoves: input.parMoves !== undefined ? ParMoves.create(input.parMoves) : undefined,
+      data: LevelData.create(input.data),
     });
 
     return this.levelDefinitionRepository.save(level);

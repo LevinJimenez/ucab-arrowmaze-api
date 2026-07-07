@@ -6,11 +6,11 @@ export class TotalScoreLeaderboardStrategy implements ILeaderboardStrategy {
     const aggregated = new Map<string, { entry: LeaderboardEntry; totalScore: number }>();
 
     for (const entry of entries) {
-      const existing = aggregated.get(entry.userId);
+      const existing = aggregated.get(entry.userId.value);
       if (existing) {
-        existing.totalScore += entry.score;
+        existing.totalScore += entry.score.value;
       } else {
-        aggregated.set(entry.userId, { entry, totalScore: entry.score });
+        aggregated.set(entry.userId.value, { entry, totalScore: entry.score.value });
       }
     }
 

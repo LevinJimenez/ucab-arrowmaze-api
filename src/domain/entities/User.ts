@@ -1,31 +1,24 @@
-import { ValidationError } from '../errors/DomainErrors';
+import { UserId } from '../value-objects/UserId';
+import { Email } from '../value-objects/Email';
+import { Username } from '../value-objects/Username';
+import { PasswordHash } from '../value-objects/PasswordHash';
 
 export interface UserProps {
-  id: string;
-  username: string;
-  email: string;
-  passwordHash: string;
+  id: UserId;
+  username: Username;
+  email: Email;
+  passwordHash: PasswordHash;
   createdAt: Date;
 }
 
 export class User {
-  public readonly id: string;
-  public readonly username: string;
-  public readonly email: string;
-  public readonly passwordHash: string;
+  public readonly id: UserId;
+  public readonly username: Username;
+  public readonly email: Email;
+  public readonly passwordHash: PasswordHash;
   public readonly createdAt: Date;
 
   constructor(props: UserProps) {
-    if (!props.username || props.username.trim().length === 0) {
-      throw new ValidationError('Username cannot be empty');
-    }
-    if (!props.email || !props.email.includes('@')) {
-      throw new ValidationError('Invalid email format');
-    }
-    if (!props.passwordHash || props.passwordHash.trim().length === 0) {
-      throw new ValidationError('Password hash cannot be empty');
-    }
-
     this.id = props.id;
     this.username = props.username;
     this.email = props.email;

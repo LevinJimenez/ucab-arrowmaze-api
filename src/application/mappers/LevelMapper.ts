@@ -1,21 +1,22 @@
 import { LevelDefinition } from '../../domain/entities/LevelDefinition';
+import { LevelDataProps } from '../../domain/value-objects/LevelData';
 
 export interface LevelDto {
   id: string;
   name: string;
   difficulty: string;
   parMoves?: number;
-  data: LevelDefinition['data'];
+  data: LevelDataProps;
 }
 
 export class LevelMapper {
   static toDto(level: LevelDefinition): LevelDto {
     return {
-      id: level.id,
-      name: level.name,
-      difficulty: level.difficulty,
-      parMoves: level.parMoves,
-      data: level.data,
+      id: level.id.value,
+      name: level.name.value,
+      difficulty: level.difficulty.value,
+      parMoves: level.parMoves?.value,
+      data: level.data.toPrimitives(),
     };
   }
 }

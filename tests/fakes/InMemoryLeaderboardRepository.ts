@@ -1,5 +1,6 @@
 import { LeaderboardEntry } from '../../src/domain/entities/LeaderboardEntry';
 import { ILeaderboardRepository } from '../../src/domain/interfaces/ILeaderboardRepository';
+import { LevelId } from '../../src/domain/value-objects/LevelId';
 
 export class InMemoryLeaderboardRepository implements ILeaderboardRepository {
   private readonly entries: LeaderboardEntry[] = [];
@@ -9,10 +10,10 @@ export class InMemoryLeaderboardRepository implements ILeaderboardRepository {
     return entry;
   }
 
-  public async getByLevel(levelId: string, limit: number): Promise<LeaderboardEntry[]> {
+  public async getByLevel(levelId: LevelId, limit: number): Promise<LeaderboardEntry[]> {
     return this.entries
-      .filter((e) => e.levelId === levelId)
-      .sort((a, b) => b.score - a.score)
+      .filter((e) => e.levelId.equals(levelId))
+      .sort((a, b) => b.score.value - a.score.value)
       .slice(0, limit);
   }
 
