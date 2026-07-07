@@ -14,6 +14,7 @@ export interface LevelDataProps {
   cells: Cell[];
   arrows: ArrowData[];
   lives?: number;
+  timeLimitSeconds?: number;
 }
 
 export class LevelData {
@@ -21,6 +22,7 @@ export class LevelData {
     public readonly cells: Cell[],
     public readonly arrows: ArrowData[],
     public readonly lives?: number,
+    public readonly timeLimitSeconds?: number,
   ) {}
 
   static create(props: LevelDataProps): LevelData {
@@ -30,10 +32,21 @@ export class LevelData {
     if (!Array.isArray(props.arrows) || props.arrows.length === 0) {
       throw new ValidationError('LevelData: arrows cannot be empty');
     }
-    return new LevelData(props.cells, props.arrows, props.lives);
+    if (
+      props.timeLimitSeconds !== undefined
+      && (!Number.isInteger(props.timeLimitSeconds) || props.timeLimitSeconds < 0)
+    ) {
+      throw new ValidationError('LevelData: timeLimitSeconds must be an integer greater than or equal to 0');
+    }
+    return new LevelData(props.cells, props.arrows, props.lives, props.timeLimitSeconds);
   }
 
   toPrimitives(): LevelDataProps {
-    return { cells: this.cells, arrows: this.arrows, lives: this.lives };
+    return {
+      cells: this.cells,
+      arrows: this.arrows,
+      lives: this.lives,
+      ...(this.timeLimitSeconds !== undefined ? { timeLimitSeconds: this.timeLimitSeconds } : {}),
+    };
   }
 }

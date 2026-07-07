@@ -188,6 +188,7 @@ const options: swaggerJsdoc.Options = {
             cells: { type: 'array', items: { $ref: '#/components/schemas/CellCoordinate' }, minItems: 1 },
             arrows: { type: 'array', items: { $ref: '#/components/schemas/ArrowData' }, minItems: 1 },
             lives: { type: 'integer', minimum: 0, example: 3 },
+            timeLimitSeconds: { type: 'integer', minimum: 0, example: 90 },
           },
         },
         LevelDto: {
