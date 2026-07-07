@@ -74,3 +74,40 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start the stack
+        run: docker compose up --build -d
+
+      - name: Wait for the API to be healthy
+        run: |
+          for i in $(seq 1 40); do
+            if curl -fsS http://localhost:3000/health > /dev/null; then
+              echo "API is up"; exit 0
+            fi
+            echo "waiting... ($i)"; sleep 3
+          done
+          echo "API did not become healthy in time"; exit 1
+
+      - name: Smoke test — health and register
+        run: |
+          curl -fsS http://localhost:3000/health; echo ""
+          code=$(curl -s -o resp.json -w "%{http_code}" -X POST http://localhost:3000/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"username":"prof","email":"prof@test.com","password":"password123"}')
+          cat resp.json; echo ""
+          if [ "$code" != "201" ]; then echo "Expected 201, got $code"; exit 1; fi
+          grep -q '"token"' resp.json || { echo "No token in response"; exit 1; }
+          echo "Register OK (201 + token)"
+
+      - name: Dump docker logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
