@@ -19,7 +19,7 @@ describe('GetLevelByIdUseCase', () => {
     const level = await useCase.execute('level_star');
 
     // Assert
-    expect(level?.name).toBe('Estrella');
+    expect(level?.name.value).toBe('Estrella');
   });
 
   it('should_return_null_when_level_is_not_found_by_id', async () => {
