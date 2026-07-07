@@ -1,6 +1,7 @@
 import { IUserRepository } from '../interfaces/IUserRepository';
 import { IUseCase } from '../interfaces/IUseCase';
 import { InvalidCredentialsError } from '../errors/DomainErrors';
+import { Email } from '../value-objects/Email';
 
 export interface AuthenticateUserInput {
   email: string;
@@ -29,10 +30,11 @@ export class AuthenticateUserUseCase implements IUseCase<AuthenticateUserInput, 
   ) {}
 
   public async execute(input: AuthenticateUserInput): Promise<AuthenticateUserOutput> {
-    const user = await this.userRepository.findByEmail(input.email);
+    const email = Email.create(input.email);
+    const user = await this.userRepository.findByEmail(email);
     const isValid = await this.passwordVerifier.verify(
       input.password,
-      user?.passwordHash ?? DUMMY_PASSWORD_HASH,
+      user?.passwordHash.value ?? DUMMY_PASSWORD_HASH,
     );
 
     if (!user || !isValid) {
@@ -40,9 +42,9 @@ export class AuthenticateUserUseCase implements IUseCase<AuthenticateUserInput, 
     }
 
     return {
-      userId: user.id,
-      username: user.username,
-      email: user.email,
+      userId: user.id.value,
+      username: user.username.value,
+      email: user.email.value,
     };
   }
 }
