@@ -1,7 +1,21 @@
 import { LevelDefinition, LevelDefinitionProps } from '../../src/domain/entities/LevelDefinition';
+import { UpsertLevelInput } from '../../src/domain/use-cases/UpsertLevelDefinitionUseCase';
+import { LevelId } from '../../src/domain/value-objects/LevelId';
+import { LevelName } from '../../src/domain/value-objects/LevelName';
+import { Difficulty } from '../../src/domain/value-objects/Difficulty';
+import { ParMoves } from '../../src/domain/value-objects/ParMoves';
+import { LevelData, LevelDataProps } from '../../src/domain/value-objects/LevelData';
+
+interface RawLevelDefinitionProps {
+  id: string;
+  name: string;
+  difficulty: string;
+  parMoves?: number;
+  data: LevelDataProps;
+}
 
 export class LevelDefinitionBuilder {
-  private props: LevelDefinitionProps = {
+  private props: RawLevelDefinitionProps = {
     id: 'level_heart',
     name: 'Corazón',
     difficulty: 'easy',
@@ -17,12 +31,30 @@ export class LevelDefinitionBuilder {
   public withName(name: string): this { this.props.name = name; return this; }
   public withDifficulty(difficulty: string): this { this.props.difficulty = difficulty; return this; }
   public withParMoves(parMoves: number): this { this.props.parMoves = parMoves; return this; }
-  public withoutCells(): this { this.props.data = { ...this.props.data, cells: [] }; return this; }
-  public withoutArrows(): this { this.props.data = { ...this.props.data, arrows: [] }; return this; }
 
-  /** Props crudas (para invariantes que esperan que el constructor lance). */
-  public buildProps(): LevelDefinitionProps { return { ...this.props, data: { ...this.props.data } }; }
+  /** Props envueltas en VOs (el constructor de LevelDefinition ya no valida). */
+  public buildProps(): LevelDefinitionProps {
+    return {
+      id: LevelId.create(this.props.id),
+      name: LevelName.create(this.props.name),
+      difficulty: Difficulty.create(this.props.difficulty),
+      parMoves: this.props.parMoves !== undefined ? ParMoves.create(this.props.parMoves) : undefined,
+      data: LevelData.create({ ...this.props.data }),
+    };
+  }
+
   public build(): LevelDefinition { return new LevelDefinition(this.buildProps()); }
+
+  /** Input crudo compatible con UpsertLevelDefinitionUseCase.execute(). */
+  public buildUpsertInput(): UpsertLevelInput {
+    return {
+      id: this.props.id,
+      name: this.props.name,
+      difficulty: this.props.difficulty,
+      parMoves: this.props.parMoves,
+      data: { ...this.props.data },
+    };
+  }
 }
 
 export const aLevel = (): LevelDefinitionBuilder => new LevelDefinitionBuilder();
