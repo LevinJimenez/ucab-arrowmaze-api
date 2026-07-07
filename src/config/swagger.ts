@@ -62,9 +62,9 @@ const options: swaggerJsdoc.Options = {
         },
         AuthenticateUserOutput: {
           type: 'object',
-          required: ['userId', 'username', 'email'],
+          required: ['id', 'username', 'email'],
           properties: {
-            userId: { type: 'string', format: 'uuid', example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' },
+            id: { type: 'string', format: 'uuid', example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' },
             username: { type: 'string', example: 'alice' },
             email: { type: 'string', format: 'email', example: 'alice@example.com' },
           },
