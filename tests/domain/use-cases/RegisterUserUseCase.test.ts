@@ -5,6 +5,7 @@ import { InMemoryUserRepository } from '../../fakes/InMemoryUserRepository';
 import { FakePasswordService } from '../../fakes/FakePasswordService';
 import { FixedIdGenerator } from '../../fakes/FixedIdGenerator';
 import { aUser } from '../../builders/UserBuilder';
+import { Email } from '../../../src/domain/value-objects/Email';
 
 describe('RegisterUserUseCase', () => {
   let users: InMemoryUserRepository;
@@ -24,11 +25,11 @@ describe('RegisterUserUseCase', () => {
 
     // Assert — comportamiento observable leído por ESTADO: el jugador queda
     // persistido y su contraseña NO se guarda en claro (sin espiar `hash`).
-    const stored = await users.findByEmail('player1@test.com');
+    const stored = await users.findByEmail(Email.create('player1@test.com'));
     expect(registered.username).toBe('player1');
     expect(stored).not.toBeNull();
-    expect(stored?.passwordHash).not.toBe('securePass123');
-    expect(stored?.passwordHash).toBe('hashed::securePass123');
+    expect(stored?.passwordHash.value).not.toBe('securePass123');
+    expect(stored?.passwordHash.value).toBe('hashed::securePass123');
   });
 
   it('should_reject_registration_when_email_already_registered', async () => {

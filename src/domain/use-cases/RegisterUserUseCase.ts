@@ -3,6 +3,10 @@ import { IUserRepository } from '../interfaces/IUserRepository';
 import { IIdGenerator } from '../interfaces/IIdGenerator';
 import { IUseCase } from '../interfaces/IUseCase';
 import { EmailAlreadyRegisteredError, UsernameAlreadyTakenError } from '../errors/DomainErrors';
+import { UserId } from '../value-objects/UserId';
+import { Email } from '../value-objects/Email';
+import { Username } from '../value-objects/Username';
+import { PasswordHash } from '../value-objects/PasswordHash';
 
 export interface RegisterUserInput {
   username: string;
@@ -28,22 +32,25 @@ export class RegisterUserUseCase implements IUseCase<RegisterUserInput, Register
   ) {}
 
   public async execute(input: RegisterUserInput): Promise<RegisterUserOutput> {
-    const existingByEmail = await this.userRepository.findByEmail(input.email);
+    const email = Email.create(input.email);
+    const username = Username.create(input.username);
+
+    const existingByEmail = await this.userRepository.findByEmail(email);
     if (existingByEmail) {
       throw new EmailAlreadyRegisteredError();
     }
 
-    const existingByUsername = await this.userRepository.findByUsername(input.username);
+    const existingByUsername = await this.userRepository.findByUsername(username);
     if (existingByUsername) {
       throw new UsernameAlreadyTakenError();
     }
 
-    const passwordHash = await this.passwordHasher.hash(input.password);
+    const passwordHash = PasswordHash.create(await this.passwordHasher.hash(input.password));
 
     const user = new User({
-      id: this.idGenerator.generate(),
-      username: input.username,
-      email: input.email,
+      id: UserId.create(this.idGenerator.generate()),
+      username,
+      email,
       passwordHash,
       createdAt: new Date(),
     });
@@ -51,9 +58,9 @@ export class RegisterUserUseCase implements IUseCase<RegisterUserInput, Register
     const created = await this.userRepository.create(user);
 
     return {
-      id: created.id,
-      username: created.username,
-      email: created.email,
+      id: created.id.value,
+      username: created.username.value,
+      email: created.email.value,
     };
   }
 }
