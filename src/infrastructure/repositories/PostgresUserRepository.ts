@@ -2,6 +2,10 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { User } from '../../domain/entities/User';
 import { IUserRepository } from '../../domain/interfaces/IUserRepository';
 import { EmailAlreadyRegisteredError, UsernameAlreadyTakenError } from '../../domain/errors/DomainErrors';
+import { UserId } from '../../domain/value-objects/UserId';
+import { Email } from '../../domain/value-objects/Email';
+import { Username } from '../../domain/value-objects/Username';
+import { PasswordHash } from '../../domain/value-objects/PasswordHash';
 
 interface UserRecord {
   id: string;
@@ -14,18 +18,18 @@ interface UserRecord {
 export class PostgresUserRepository implements IUserRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  public async findById(id: string): Promise<User | null> {
-    const record = await this.prisma.user.findUnique({ where: { id } });
+  public async findById(id: UserId): Promise<User | null> {
+    const record = await this.prisma.user.findUnique({ where: { id: id.value } });
     return record ? this.toEntity(record) : null;
   }
 
-  public async findByEmail(email: string): Promise<User | null> {
-    const record = await this.prisma.user.findUnique({ where: { email } });
+  public async findByEmail(email: Email): Promise<User | null> {
+    const record = await this.prisma.user.findUnique({ where: { email: email.value } });
     return record ? this.toEntity(record) : null;
   }
 
-  public async findByUsername(username: string): Promise<User | null> {
-    const record = await this.prisma.user.findUnique({ where: { username } });
+  public async findByUsername(username: Username): Promise<User | null> {
+    const record = await this.prisma.user.findUnique({ where: { username: username.value } });
     return record ? this.toEntity(record) : null;
   }
 
@@ -33,10 +37,10 @@ export class PostgresUserRepository implements IUserRepository {
     try {
       const record = await this.prisma.user.create({
         data: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          passwordHash: user.passwordHash,
+          id: user.id.value,
+          username: user.username.value,
+          email: user.email.value,
+          passwordHash: user.passwordHash.value,
           createdAt: user.createdAt,
         },
       });
@@ -58,10 +62,10 @@ export class PostgresUserRepository implements IUserRepository {
 
   public async update(user: User): Promise<User> {
     const record = await this.prisma.user.update({
-      where: { id: user.id },
+      where: { id: user.id.value },
       data: {
-        username: user.username,
-        email: user.email,
+        username: user.username.value,
+        email: user.email.value,
       },
     });
     return this.toEntity(record);
@@ -69,10 +73,10 @@ export class PostgresUserRepository implements IUserRepository {
 
   private toEntity(record: UserRecord): User {
     return new User({
-      id: record.id,
-      username: record.username,
-      email: record.email,
-      passwordHash: record.passwordHash,
+      id: UserId.create(record.id),
+      username: Username.create(record.username),
+      email: Email.create(record.email),
+      passwordHash: PasswordHash.create(record.passwordHash),
       createdAt: record.createdAt,
     });
   }
