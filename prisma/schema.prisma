@@ -24,7 +24,7 @@ model PlayerProgress {
   userId          String   @unique @map("user_id")
   completedLevels String[] @map("completed_levels")
   bestScores      Json     @map("best_scores")
-  currentLevelId  String   @default("") @map("current_level_id")
+  currentLevelId  String   @map("current_level_id")
   updatedAt       DateTime @updatedAt @map("updated_at")
   user            User     @relation(fields: [userId], references: [id])
 
