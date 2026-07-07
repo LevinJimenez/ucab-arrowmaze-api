@@ -23,7 +23,7 @@ describe('AuthenticateUserUseCase', () => {
     const result = await useCase.execute({ email: 'player1@test.com', password: 'correctPass' });
 
     // Assert
-    expect(result.userId).toBe('user-1');
+    expect(result.id).toBe('user-1');
     expect(result.username).toBe('player1');
   });
 

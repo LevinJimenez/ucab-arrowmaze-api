@@ -45,7 +45,7 @@ export class AuthController {
     }
 
     const payload = await this.authenticateUseCase.execute(parsed.data);
-    const token = this.tokenService.generateToken(payload.userId, payload.username);
+    const token = this.tokenService.generateToken(payload.id, payload.username);
 
     ResponseFactory.success(res, { user: payload, token });
   };

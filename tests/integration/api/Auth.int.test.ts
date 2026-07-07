@@ -46,7 +46,7 @@ describe('Auth API — integration', () => {
   }, TIMEOUT);
 
   it('POST /auth/login returns 200 with token', async () => {
-    await request(app)
+    const registerRes = await request(app)
       .post('/auth/register')
       .send({ username: 'alice', email: 'alice@example.com', password: 'password123' });
 
@@ -58,6 +58,7 @@ describe('Auth API — integration', () => {
     expect(res.body.success).toBe(true);
     expect(typeof res.body.data.token).toBe('string');
     expect(res.body.data.user.email).toBe('alice@example.com');
+    expect(res.body.data.user.id).toBe(registerRes.body.data.user.id);
   }, TIMEOUT);
 
   it('POST /auth/login with invalid credentials returns 401', async () => {

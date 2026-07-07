@@ -9,7 +9,7 @@ export interface AuthenticateUserInput {
 }
 
 export interface AuthenticateUserOutput {
-  userId: string;
+  id: string;
   username: string;
   email: string;
 }
@@ -42,7 +42,7 @@ export class AuthenticateUserUseCase implements IUseCase<AuthenticateUserInput, 
     }
 
     return {
-      userId: user.id.value,
+      id: user.id.value,
       username: user.username.value,
       email: user.email.value,
     };
