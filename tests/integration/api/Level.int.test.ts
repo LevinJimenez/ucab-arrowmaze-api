@@ -65,6 +65,31 @@ describe('Level API — integration', () => {
     expect(getRes.body.data.name).toBe('Test Level 1');
   }, TIMEOUT);
 
+  it('PUT /levels/:id upserts a level with timeLimitSeconds and GET preserves it', async () => {
+    const registerRes = await request(app)
+      .post('/auth/register')
+      .send({ username: 'admin', email: 'admin@example.com', password: 'password123' });
+    const token: string = registerRes.body.data.token;
+
+    const payloadWithTimeLimit = {
+      ...levelPayload,
+      data: { ...levelPayload.data, timeLimitSeconds: 90 },
+    };
+
+    const putRes = await request(app)
+      .put('/levels/level_1')
+      .set('Authorization', `Bearer ${token}`)
+      .send(payloadWithTimeLimit);
+
+    expect(putRes.status).toBe(200);
+    expect(putRes.body.data.data.timeLimitSeconds).toBe(90);
+
+    const getRes = await request(app).get('/levels/level_1');
+
+    expect(getRes.status).toBe(200);
+    expect(getRes.body.data.data.timeLimitSeconds).toBe(90);
+  }, TIMEOUT);
+
   it('GET /levels/:id for non-existent level returns 404', async () => {
     const res = await request(app).get('/levels/nonexistent_level');
 

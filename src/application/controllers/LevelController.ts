@@ -20,6 +20,7 @@ const upsertSchema = z.object({
       color: z.string().min(1),
     })).min(1),
     lives: z.number().int().min(0).optional(),
+    timeLimitSeconds: z.number().int().min(0).optional(),
   }),
 });
 

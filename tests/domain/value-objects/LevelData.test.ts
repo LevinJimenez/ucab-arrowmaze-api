@@ -6,6 +6,7 @@ const validProps = {
   cells: [[0, 0], [0, 1]] as [number, number][],
   arrows: [{ id: 'a1', path: [[0, 0], [0, 1]] as [number, number][], color: '#EF476F' }],
   lives: 5,
+  timeLimitSeconds: 60,
 };
 
 describe('LevelData', () => {
@@ -17,6 +18,7 @@ describe('LevelData', () => {
     expect(data.cells).toEqual(validProps.cells);
     expect(data.arrows).toEqual(validProps.arrows);
     expect(data.lives).toBe(5);
+    expect(data.timeLimitSeconds).toBe(60);
   });
 
   it('should_reject_when_cells_is_empty', () => {
@@ -36,5 +38,26 @@ describe('LevelData', () => {
 
     // Assert
     expect(primitives).toEqual(validProps);
+  });
+
+  it('should_reject_when_time_limit_seconds_is_negative', () => {
+    expect(() => LevelData.create({ ...validProps, timeLimitSeconds: -1 })).toThrow(ValidationError);
+  });
+
+  it('should_reject_when_time_limit_seconds_is_a_decimal', () => {
+    expect(() => LevelData.create({ ...validProps, timeLimitSeconds: 1.5 })).toThrow(ValidationError);
+  });
+
+  it('should_omit_time_limit_seconds_from_toPrimitives_when_not_provided', () => {
+    // Arrange
+    const { timeLimitSeconds: _timeLimitSeconds, ...withoutTimeLimit } = validProps;
+    const data = LevelData.create(withoutTimeLimit);
+
+    // Act
+    const primitives = data.toPrimitives();
+
+    // Assert
+    expect(primitives.timeLimitSeconds).toBeUndefined();
+    expect('timeLimitSeconds' in primitives).toBe(false);
   });
 });
