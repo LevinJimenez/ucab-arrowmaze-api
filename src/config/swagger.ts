@@ -267,6 +267,22 @@ const options: swaggerJsdoc.Options = {
             data: { type: 'array', items: { $ref: '#/components/schemas/LevelDto' } },
           },
         },
+        GenerateLevelRequest: {
+          type: 'object',
+          required: ['prompt'],
+          properties: {
+            prompt: { type: 'string', minLength: 1, maxLength: 500, example: 'A maze shaped like a heart' },
+            difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'], example: 'medium' },
+          },
+        },
+        GenerateLevelResponse: {
+          type: 'object',
+          required: ['success', 'data'],
+          properties: {
+            success: { type: 'boolean', example: true },
+            data: { $ref: '#/components/schemas/LevelData' },
+          },
+        },
 
         // ── Health ──────────────────────────────────────────────────────────
         HealthResponse: {
@@ -546,6 +562,40 @@ const options: swaggerJsdoc.Options = {
             },
             '422': {
               description: 'Validation error',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
+            },
+          },
+        },
+      },
+
+      '/levels/generate': {
+        post: {
+          summary: 'Generate a new level from a prompt via LLM (not persisted)',
+          tags: ['Levels'],
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/GenerateLevelRequest' } } },
+          },
+          responses: {
+            '200': {
+              description: 'Generated level data (opaque board, not saved server-side)',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/GenerateLevelResponse' } } },
+            },
+            '401': {
+              description: 'Missing or invalid token',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
+            },
+            '422': {
+              description: 'Validation error',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
+            },
+            '429': {
+              description: 'Rate limit exceeded',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
+            },
+            '502': {
+              description: 'The LLM failed to generate or produced an invalid level',
               content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
             },
           },
