@@ -1,0 +1,280 @@
+# =============================================================
+#  Arrow Maze - Backend (Clean Architecture + DDD tactical map)
+#  Refleja el CODIGO REAL: Prisma 6 (no TypeORM), AOP por Decorator (no Proxy),
+#  composition root manual en app.ts (no contenedor DI), contrato "Mecanica A"
+#  (el backend NO simula el juego; persiste el nivel como JSON opaco), y un
+#  dominio SIN primitivos sueltos: 13 Value Objects encapsulan cada dato.
+#  Render:  d2 --theme 200 --layout elk docs/backend-architecture.d2 docs/backend-architecture.svg
+# =============================================================
+
+direction: right
+
+# ---- Estilos por patron tactico ----------------------------
+classes: {
+  aggregate:   { style: { fill: "#FDE68A"; stroke: "#B45309"; bold: true; border-radius: 8 } }
+  entity:      { style: { fill: "#FEF3C7"; stroke: "#B45309" } }
+  vo:          { style: { fill: "#FEF9C3"; stroke: "#CA8A04"; border-radius: 20 } }
+  derror:      { shape: hexagon; style: { fill: "#FEE2E2"; stroke: "#B91C1C" } }
+  port:        { shape: page; style: { fill: "#FFFFFF"; stroke: "#B45309"; stroke-dash: 3 } }
+  usecase:     { style: { fill: "#DBEAFE"; stroke: "#1D4ED8" } }
+  controller:  { style: { fill: "#D1FAE5"; stroke: "#047857" } }
+  adapter:     { style: { fill: "#DCFCE7"; stroke: "#15803D" } }
+  mapper:      { style: { fill: "#ECFDF5"; stroke: "#059669" } }
+  factory:     { shape: hexagon; style: { fill: "#DCFCE7"; stroke: "#047857" } }
+  aspect:      { shape: parallelogram; style: { fill: "#E0E7FF"; stroke: "#4338CA" } }
+  strategy:    { shape: parallelogram; style: { fill: "#EDE9FE"; stroke: "#6D28D9" } }
+  service:     { style: { fill: "#F3F4F6"; stroke: "#4B5563" } }
+  persistence: { shape: cylinder; style: { fill: "#E5E7EB"; stroke: "#374151" } }
+  root:        { shape: hexagon; style: { fill: "#F5F3FF"; stroke: "#5B21B6"; bold: true } }
+  config:      { style: { fill: "#F3F4F6"; stroke: "#4B5563"; stroke-dash: 2 } }
+}
+
+# =============================================================
+#  CAPA 4 - FRAMEWORKS & DRIVERS
+# =============================================================
+frameworks: "CAPA 4 - Frameworks & Drivers" {
+  style: { fill: "#F9FAFB"; stroke: "#6B7280"; font-size: 20; bold: true }
+
+  root: "app.ts - Composition Root (new + withAop, sin contenedor DI)"; root.class: root
+
+  services: "Concrete Services" {
+    bcrypt: "BcryptPasswordService";  bcrypt.class: service
+    uuid:   "UuidIdGenerator";        uuid.class: service
+    authf:  "AuthFacade  <<Facade>>"; authf.class: service
+    clog:   "ConsoleLogger";          clog.class: service
+  }
+
+  strategies: "Leaderboard Strategies  <<Strategy>>" {
+    perlvl: "PerLevelLeaderboardStrategy";   perlvl.class: strategy
+    total:  "TotalScoreLeaderboardStrategy"; total.class: strategy
+    comb:   "CombinedLeaderboardStrategy";   comb.class: strategy
+  }
+
+  decorators: "AOP Decorators  <<Decorator + DIP>>" {
+    logd: "LoggingUseCaseDecorator";           logd.class: aspect
+    exd:  "ExceptionHandlingUseCaseDecorator"; exd.class: aspect
+    cad:  "CachingUseCaseDecorator";           cad.class: aspect
+    red:  "redactSensitive (helper)";          red.class: aspect
+  }
+
+  persistence: "Persistence - Prisma 6 / PostgreSQL" {
+    client: "PrismaClient (generated)";                                       client.class: persistence
+    schema: "schema.prisma - User, PlayerProgress, LeaderboardEntry, Level";  schema.class: persistence
+  }
+
+  config: "Config" {
+    env:  "env.ts (zod)";                env.class: config
+    swag: "swagger.ts (OpenAPI inline)"; swag.class: config
+  }
+}
+
+# =============================================================
+#  CAPA 3 - INTERFACE ADAPTERS
+# =============================================================
+adapters: "CAPA 3 - Interface Adapters" {
+  style: { fill: "#F0FDF4"; stroke: "#16A34A"; font-size: 20; bold: true }
+
+  http: "HTTP (Express 5)" {
+    routes: "Routes" {
+      ar: "authRoutes";        ar.class: controller
+      pr: "progressRoutes";    pr.class: controller
+      lr: "leaderboardRoutes"; lr.class: controller
+      vr: "levelRoutes";       vr.class: controller
+    }
+    controllers: "Controllers" {
+      ac: "AuthController";        ac.class: controller
+      pc: "ProgressController";    pc.class: controller
+      lc: "LeaderboardController"; lc.class: controller
+      vc: "LevelController";       vc.class: controller
+    }
+    middleware: "Middleware" {
+      amw: "authMiddleware (createAuthMiddleware)"; amw.class: adapter
+      eh:  "errorHandler (DomainError to status)";  eh.class: adapter
+    }
+  }
+
+  mappers: "Mappers (Domain to DTO, desenvuelven VOs a primitivos)" {
+    pm: "ProgressMapper";    pm.class: mapper
+    vm: "LevelMapper";       vm.class: mapper
+    lm: "LeaderboardMapper"; lm.class: mapper
+  }
+
+  factory: "ResponseFactory  <<Factory Method>>"; factory.class: factory
+
+  repositories: "Repositories (adapters)  <<Adapter>>" {
+    urepo: "PostgresUserRepository";            urepo.class: adapter
+    prepo: "PostgresProgressRepository";        prepo.class: adapter
+    lrepo: "PostgresLeaderboardRepository";     lrepo.class: adapter
+    vrepo: "PostgresLevelDefinitionRepository"; vrepo.class: adapter
+  }
+}
+
+# =============================================================
+#  CAPA 2 - USE CASES  (domain/use-cases + domain/interfaces)
+#  Los puertos reciben VOs (DDD puro); los use cases construyen los VOs.
+# =============================================================
+usecases: "CAPA 2 - Use Cases  -  Application Business Rules" {
+  style: { fill: "#EFF6FF"; stroke: "#2563EB"; font-size: 20; bold: true }
+
+  uc: "Use Cases  <<IUseCase<I,O>>>" {
+    reg:   "RegisterUserUseCase";          reg.class: usecase
+    auth:  "AuthenticateUserUseCase";      auth.class: usecase
+    sync:  "SyncProgressUseCase";          sync.class: usecase
+    getlb: "GetLeaderboardUseCase";        getlb.class: usecase
+    getls: "GetLevelDefinitionsUseCase";   getls.class: usecase
+    getlv: "GetLevelByIdUseCase";          getlv.class: usecase
+    upl:   "UpsertLevelDefinitionUseCase"; upl.class: usecase
+  }
+
+  ports: "Ports (interfaces / DIP - reciben VOs)" {
+    style.fill: "#F8FAFF"
+    iuc:   "IUseCase<I,O>";              iuc.class: port
+    iur:   "IUserRepository";            iur.class: port
+    ipr:   "IProgressRepository";        ipr.class: port
+    ilr:   "ILeaderboardRepository";     ilr.class: port
+    ivr:   "ILevelDefinitionRepository"; ivr.class: port
+    ils:   "ILeaderboardStrategy";       ils.class: port
+    itok:  "ITokenService";              itok.class: port
+    ihash: "IPasswordHasher";            ihash.class: port
+    iver:  "IPasswordVerifier";          iver.class: port
+    iid:   "IIdGenerator";               iid.class: port
+    ilog:  "ILogger";                    ilog.class: port
+  }
+}
+
+# =============================================================
+#  CAPA 1 - ENTITIES & VALUE OBJECTS  (domain/entities + value-objects + errors)
+# =============================================================
+domain: "CAPA 1 - Entities & Value Objects  -  Enterprise Business Rules" {
+  style: { fill: "#FFFBEB"; stroke: "#D97706"; font-size: 20; bold: true }
+
+  aggregates: "Aggregates & Entities" {
+    user:  "User  <<Aggregate Root>>";             user.class: aggregate
+    prog:  "PlayerProgress  <<Aggregate Root>>";   prog.class: aggregate
+    level: "LevelDefinition  <<Aggregate Root>>";  level.class: aggregate
+    entry: "LeaderboardEntry  <<Aggregate Root>>";  entry.class: aggregate
+  }
+
+  vos: "Value Objects (13) - primitivos encapsulados con validacion" {
+    style.fill: "#FFFEF0"
+
+    user_vos: "Identity & User" {
+      uid:   "UserId";       uid.class: vo
+      email: "Email";        email.class: vo
+      uname: "Username";     uname.class: vo
+      phash: "PasswordHash"; phash.class: vo
+    }
+    level_vos: "Level" {
+      lid:   "LevelId";                   lid.class: vo
+      lname: "LevelName";                 lname.class: vo
+      diff:  "Difficulty (enum)";         diff.class: vo
+      par:   "ParMoves";                  par.class: vo
+      ldata: "LevelData (validate + cells/arrows)"; ldata.class: vo
+    }
+    metric_vos: "Score & Metrics" {
+      score:  "Score";                    score.class: vo
+      moves:  "Moves";                    moves.class: vo
+      time:   "TimeSeconds";              time.class: vo
+      lscore: "LevelScore (LevelId+Score)"; lscore.class: vo
+    }
+  }
+
+  errors: "Domain Errors (extienden DomainError, portan statusCode)" {
+    base: "DomainError (abstract)";        base.class: derror
+    ve:   "ValidationError - 422";         ve.class: derror
+    ic:   "InvalidCredentials - 401";      ic.class: derror
+    ear:  "EmailAlreadyRegistered - 409";  ear.class: derror
+    uat:  "UsernameAlreadyTaken - 409";    uat.class: derror
+    nf:   "NotFound - 404";                nf.class: derror
+  }
+}
+
+# =============================================================
+#  DEPENDENCIAS  (todas apuntan HACIA ADENTRO, hacia el dominio)
+# =============================================================
+
+# Rutas montan controllers
+adapters.http.routes.ar -> adapters.http.controllers.ac
+adapters.http.routes.pr -> adapters.http.controllers.pc
+adapters.http.routes.lr -> adapters.http.controllers.lc
+adapters.http.routes.vr -> adapters.http.controllers.vc
+
+# Controllers -> Use Cases (dependen de IUseCase, sin casts)
+adapters.http.controllers.ac -> usecases.uc.reg
+adapters.http.controllers.ac -> usecases.uc.auth
+adapters.http.controllers.pc -> usecases.uc.sync
+adapters.http.controllers.lc -> usecases.uc.getlb
+adapters.http.controllers.vc -> usecases.uc.getls
+adapters.http.controllers.vc -> usecases.uc.getlv
+adapters.http.controllers.vc -> usecases.uc.upl
+
+# Controllers / middleware usan token, factory y errores
+adapters.http.controllers.ac -> usecases.ports.itok
+adapters.http.middleware.amw -> usecases.ports.itok
+adapters.http.controllers.ac -> adapters.factory
+adapters.http.middleware.eh  -> domain.errors.base: "instanceof" { style.stroke-dash: 2 }
+
+# Mappers convierten entidades de dominio a DTOs
+adapters.mappers.pm -> domain.aggregates.prog
+adapters.mappers.vm -> domain.aggregates.level
+adapters.mappers.lm -> domain.aggregates.entry
+
+# Use Cases -> Ports (DIP)
+usecases.uc.reg   -> usecases.ports.iur
+usecases.uc.reg   -> usecases.ports.ihash
+usecases.uc.reg   -> usecases.ports.iid
+usecases.uc.auth  -> usecases.ports.iur
+usecases.uc.auth  -> usecases.ports.iver
+usecases.uc.sync  -> usecases.ports.ipr
+usecases.uc.sync  -> usecases.ports.ilr
+usecases.uc.getlb -> usecases.ports.ilr
+usecases.uc.getlb -> usecases.ports.ils
+usecases.uc.getls -> usecases.ports.ivr
+usecases.uc.getlv -> usecases.ports.ivr
+usecases.uc.upl   -> usecases.ports.ivr
+
+# Use Cases -> Entities (crean / retornan modelo de dominio)
+usecases.uc.reg  -> domain.aggregates.user
+usecases.uc.sync -> domain.aggregates.prog
+usecases.uc.sync -> domain.aggregates.entry
+usecases.uc.upl  -> domain.aggregates.level
+
+# Agregados COMPONEN sus Value Objects (linea llena)
+domain.aggregates.user  -> domain.vos.user_vos:   "compone"
+domain.aggregates.level -> domain.vos.level_vos:  "compone"
+domain.aggregates.prog  -> domain.vos.metric_vos: "compone (LevelScore)"
+domain.aggregates.entry -> domain.vos.metric_vos: "compone"
+domain.vos.metric_vos.lscore -> domain.vos.level_vos.lid:   "has" { style.stroke-dash: 2 }
+domain.vos.metric_vos.lscore -> domain.vos.metric_vos.score: "has" { style.stroke-dash: 2 }
+
+# Adaptadores IMPLEMENTAN puertos (linea punteada = implements)
+adapters.repositories.urepo -> usecases.ports.iur: "impl" { style.stroke-dash: 4; style.stroke: "#15803D" }
+adapters.repositories.prepo -> usecases.ports.ipr: "impl" { style.stroke-dash: 4; style.stroke: "#15803D" }
+adapters.repositories.lrepo -> usecases.ports.ilr: "impl" { style.stroke-dash: 4; style.stroke: "#15803D" }
+adapters.repositories.vrepo -> usecases.ports.ivr: "impl" { style.stroke-dash: 4; style.stroke: "#15803D" }
+
+frameworks.services.bcrypt -> usecases.ports.ihash: "impl" { style.stroke-dash: 4; style.stroke: "#4B5563" }
+frameworks.services.bcrypt -> usecases.ports.iver:  "impl" { style.stroke-dash: 4; style.stroke: "#4B5563" }
+frameworks.services.uuid   -> usecases.ports.iid:   "impl" { style.stroke-dash: 4; style.stroke: "#4B5563" }
+frameworks.services.authf  -> usecases.ports.itok:  "impl" { style.stroke-dash: 4; style.stroke: "#4B5563" }
+frameworks.services.clog   -> usecases.ports.ilog:  "impl" { style.stroke-dash: 4; style.stroke: "#4B5563" }
+
+frameworks.strategies.perlvl -> usecases.ports.ils: "impl" { style.stroke-dash: 4; style.stroke: "#6D28D9" }
+frameworks.strategies.total  -> usecases.ports.ils: "impl" { style.stroke-dash: 4; style.stroke: "#6D28D9" }
+frameworks.strategies.comb   -> usecases.ports.ils: "impl" { style.stroke-dash: 4; style.stroke: "#6D28D9" }
+
+# Decorators AOP implementan y ENVUELVEN IUseCase
+frameworks.decorators.logd -> usecases.ports.iuc: "impl / wrap" { style.stroke-dash: 4; style.stroke: "#4338CA" }
+frameworks.decorators.exd  -> usecases.ports.iuc: "impl / wrap" { style.stroke-dash: 4; style.stroke: "#4338CA" }
+frameworks.decorators.cad  -> usecases.ports.iuc: "impl / wrap" { style.stroke-dash: 4; style.stroke: "#4338CA" }
+
+# Repositorios usan Prisma
+adapters.repositories.urepo -> frameworks.persistence.client
+adapters.repositories.prepo -> frameworks.persistence.client
+adapters.repositories.lrepo -> frameworks.persistence.client
+adapters.repositories.vrepo -> frameworks.persistence.client
+
+# Composition root cablea todo (con withAop = Exception(Logging(useCase)))
+frameworks.root -> adapters.http.controllers: "wires" { style.stroke-dash: 2; style.stroke: "#9CA3AF" }
+frameworks.root -> usecases.uc: "wires + withAop" { style.stroke-dash: 2; style.stroke: "#9CA3AF" }
+frameworks.root -> frameworks.decorators: "compose AOP" { style.stroke-dash: 2; style.stroke: "#9CA3AF" }

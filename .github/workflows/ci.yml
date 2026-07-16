@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, 'feature/**']
+  pull_request:
+    branches: [main, develop]
+
+# Cancela corridas en curso de la misma rama cuando llega un push nuevo
+# (evita acumular ejecuciones y ahorra minutos de Actions).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-ci:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: arrowmaze_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run ESLint
+        run: pnpm run lint
+
+      - name: Type-check (incl. tests)
+        run: pnpm run typecheck
+
+      - name: Run Prisma Generate
+        run: pnpm exec prisma generate
+
+      - name: Run Prisma DB Push (Test DB Setup)
+        run: pnpm exec prisma db push
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/arrowmaze_test
+          DIRECT_URL: postgresql://test:test@localhost:5432/arrowmaze_test
+
+      - name: Run unit tests with coverage (no DB — fast feedback)
+        run: pnpm run test:coverage
+
+      - name: Run integration tests (Postgres)
+        run: pnpm run test:integration
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/arrowmaze_test
+          DIRECT_URL: postgresql://test:test@localhost:5432/arrowmaze_test
+          JWT_SECRET: ci-test-secret-key-minimum-16-chars
+          NODE_ENV: test
+
+      - name: Build
+        run: pnpm run build
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start the stack
+        run: docker compose up --build -d
+
+      - name: Wait for the API to be healthy
+        run: |
+          for i in $(seq 1 40); do
+            if curl -fsS http://localhost:3000/health > /dev/null; then
+              echo "API is up"; exit 0
+            fi
+            echo "waiting... ($i)"; sleep 3
+          done
+          echo "API did not become healthy in time"; exit 1
+
+      - name: Smoke test — health and register
+        run: |
+          curl -fsS http://localhost:3000/health; echo ""
+          code=$(curl -s -o resp.json -w "%{http_code}" -X POST http://localhost:3000/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"username":"prof","email":"prof@test.com","password":"password123"}')
+          cat resp.json; echo ""
+          if [ "$code" != "201" ]; then echo "Expected 201, got $code"; exit 1; fi
+          grep -q '"token"' resp.json || { echo "No token in response"; exit 1; }
+          echo "Register OK (201 + token)"
+
+      - name: Dump docker logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

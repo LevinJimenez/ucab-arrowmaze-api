@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: arrowmaze
+      POSTGRES_PASSWORD: arrowmaze
+      POSTGRES_DB: arrowmaze
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arrowmaze -d arrowmaze"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env.docker
+    environment:
+      # Secreto real: nunca en .env.docker (trackeado). Viene del .env local
+      # (gitignored) en la raiz del repo, que Docker Compose autolee para
+      # resolver ${...}.
+      #
+      # OPCIONAL a proposito (:- y no :?). La key es opcional por diseno: el
+      # cliente de Anthropic se construye perezosamente, asi que sin ella la app
+      # arranca con normalidad y solo POST /levels/generate responde 502
+      # (LevelGenerationError). Marcarla como obligatoria con :? rompe el smoke
+      # test de CI, donde la key no existe --- ni debe existir: ese job levanta
+      # el stack y prueba /health y /auth/register, que no tocan el LLM.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+volumes:
+  pgdata:
