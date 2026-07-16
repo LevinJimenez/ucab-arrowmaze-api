@@ -7,6 +7,7 @@ import {
   NotFoundError,
   ValidationError,
   UsernameAlreadyTakenError,
+  LevelGenerationError,
 } from '../../../src/domain/errors/DomainErrors';
 
 const makeRes = (): Response => {
@@ -81,5 +82,16 @@ describe('errorHandler', () => {
 
     // Assert
     expect(res.status).toHaveBeenCalledWith(409);
+  });
+
+  it('should_respond_502_when_level_generation_fails', () => {
+    // Arrange
+    const res = makeRes();
+
+    // Act
+    errorHandler(new LevelGenerationError(), {} as Request, res, vi.fn());
+
+    // Assert
+    expect(res.status).toHaveBeenCalledWith(502);
   });
 });
