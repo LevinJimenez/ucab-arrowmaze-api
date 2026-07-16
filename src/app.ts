@@ -13,6 +13,7 @@ import { BcryptPasswordService } from './infrastructure/services/BcryptPasswordS
 import { UuidIdGenerator } from './infrastructure/services/UuidIdGenerator';
 import { ConsoleLogger } from './infrastructure/services/ConsoleLogger';
 import { AuthFacade } from './infrastructure/services/AuthFacade';
+import { LlmLevelGenerator } from './infrastructure/services/LlmLevelGenerator';
 import { PerLevelLeaderboardStrategy } from './infrastructure/strategies/PerLevelLeaderboardStrategy';
 
 import { LoggingUseCaseDecorator } from './infrastructure/decorators/LoggingUseCaseDecorator';
@@ -28,6 +29,7 @@ import { GetLevelByIdUseCase } from './domain/use-cases/GetLevelByIdUseCase';
 import { UpsertLevelDefinitionUseCase } from './domain/use-cases/UpsertLevelDefinitionUseCase';
 import { SubmitSurvivalRunUseCase } from './domain/use-cases/SubmitSurvivalRunUseCase';
 import { GetSurvivalLeaderboardUseCase } from './domain/use-cases/GetSurvivalLeaderboardUseCase';
+import { GenerateLevelUseCase } from './domain/use-cases/GenerateLevelUseCase';
 import { IUseCase } from './domain/interfaces/IUseCase';
 
 import { AuthController } from './application/controllers/AuthController';
@@ -62,6 +64,7 @@ const progressRepo = new PostgresProgressRepository(prisma);
 const leaderboardRepo = new PostgresLeaderboardRepository(prisma);
 const levelRepo = new PostgresLevelDefinitionRepository(prisma);
 const survivalRepo = new PostgresSurvivalRepository(prisma);
+const levelGenerator = new LlmLevelGenerator();
 const leaderboardStrategy = new PerLevelLeaderboardStrategy();
 
 // --- Helper de composición AOP (logging + manejo de excepciones) ---
@@ -111,13 +114,20 @@ const getSurvivalLeaderboardUseCase = withAop(
   'GetSurvivalLeaderboard',
 );
 
+const generateLevelUseCase = withAop(new GenerateLevelUseCase(levelGenerator), 'GenerateLevel');
+
 // --- Controllers ---
 // Los controllers dependen de IUseCase<I, O>; los use cases decorados con AOP
 // son IUseCase<I, O>, por lo que el wiring no necesita ningún cast.
 const authController = new AuthController(registerUseCase, authenticateUseCase, tokenService);
 const progressController = new ProgressController(syncProgressUseCase, progressRepo);
 const leaderboardController = new LeaderboardController(getLeaderboardUseCase);
-const levelController = new LevelController(getLevelDefinitionsUseCase, getLevelByIdUseCase, upsertLevelDefinitionUseCase);
+const levelController = new LevelController(
+  getLevelDefinitionsUseCase,
+  getLevelByIdUseCase,
+  upsertLevelDefinitionUseCase,
+  generateLevelUseCase,
+);
 const survivalController = new SurvivalController(submitSurvivalRunUseCase, getSurvivalLeaderboardUseCase);
 
 const authMiddleware = createAuthMiddleware(tokenService);

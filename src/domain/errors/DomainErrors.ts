@@ -52,3 +52,12 @@ export class NotFoundError extends DomainError {
     super(`${resource} not found`);
   }
 }
+
+/** El servicio de IA falló al generar o validar un nivel (502). */
+export class LevelGenerationError extends DomainError {
+  public readonly statusCode = 502;
+
+  constructor(message = 'Failed to generate level') {
+    super(message);
+  }
+}

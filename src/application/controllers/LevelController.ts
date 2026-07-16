@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { UpsertLevelInput } from '../../domain/use-cases/UpsertLevelDefinitionUseCase';
 import { LevelDefinition } from '../../domain/entities/LevelDefinition';
+import { LevelData } from '../../domain/value-objects/LevelData';
+import { LevelSpec } from '../../domain/interfaces/ILevelGenerator';
 import { IUseCase } from '../../domain/interfaces/IUseCase';
 import { ResponseFactory } from '../factories/ResponseFactory';
 import { LevelMapper } from '../mappers/LevelMapper';
@@ -24,11 +26,17 @@ const upsertSchema = z.object({
   }),
 });
 
+const generateSchema = z.object({
+  prompt: z.string().min(1).max(500),
+  difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+});
+
 export class LevelController {
   constructor(
     private readonly getLevelDefinitionsUseCase: IUseCase<void, LevelDefinition[]>,
     private readonly getLevelByIdUseCase: IUseCase<string, LevelDefinition | null>,
     private readonly upsertLevelDefinitionUseCase: IUseCase<UpsertLevelInput, LevelDefinition>,
+    private readonly generateLevelUseCase: IUseCase<LevelSpec, LevelData>,
   ) {}
 
   public getAll = async (_req: Request, res: Response): Promise<void> => {
@@ -67,5 +75,16 @@ export class LevelController {
 
     const level = await this.upsertLevelDefinitionUseCase.execute({ id, ...parsed.data });
     ResponseFactory.success(res, LevelMapper.toDto(level));
+  };
+
+  public generate = async (req: Request, res: Response): Promise<void> => {
+    const parsed = generateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      ResponseFactory.error(res, 'Validation error: ' + parsed.error.message, 422);
+      return;
+    }
+
+    const level = await this.generateLevelUseCase.execute(parsed.data);
+    ResponseFactory.success(res, level.toPrimitives());
   };
 }
