@@ -2,11 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { LeaderboardMapper } from '../../../src/application/mappers/LeaderboardMapper';
 import { ProgressMapper } from '../../../src/application/mappers/ProgressMapper';
 import { LevelMapper } from '../../../src/application/mappers/LevelMapper';
+import { SurvivalMapper } from '../../../src/application/mappers/SurvivalMapper';
 import { PlayerProgress } from '../../../src/domain/entities/PlayerProgress';
 import { LevelDefinition } from '../../../src/domain/entities/LevelDefinition';
 import { aLeaderboardEntry } from '../../builders/LeaderboardEntryBuilder';
 import { aLevel } from '../../builders/LevelDefinitionBuilder';
 import { aPlayerProgress } from '../../builders/PlayerProgressBuilder';
+import { aSurvivalEntry } from '../../builders/SurvivalEntryBuilder';
 
 describe('LeaderboardMapper', () => {
   it('should_expose_ranked_at_as_iso_string_when_mapping_entry', () => {
@@ -81,5 +83,30 @@ describe('LevelMapper', () => {
 
     // Assert
     expect(dto.parMoves).toBeUndefined();
+  });
+});
+
+describe('SurvivalMapper', () => {
+  it('should_expose_played_at_as_iso_string_when_mapping_entry', () => {
+    // Arrange
+    const entry = aSurvivalEntry().withBoardsSolved(7).build();
+
+    // Act
+    const dto = SurvivalMapper.toDto(entry);
+
+    // Assert
+    expect(dto.boardsSolved).toBe(7);
+    expect(dto.playedAt).toBe(entry.playedAt.toISOString());
+  });
+
+  it('should_map_entry_without_total_score_when_not_provided', () => {
+    // Arrange
+    const entry = aSurvivalEntry().withTotalScore(undefined).build();
+
+    // Act
+    const dto = SurvivalMapper.toDto(entry);
+
+    // Assert
+    expect(dto.totalScore).toBeUndefined();
   });
 });
