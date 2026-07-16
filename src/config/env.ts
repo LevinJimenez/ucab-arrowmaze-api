@@ -10,6 +10,9 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(16),
   JWT_EXPIRES_IN: z.string().default('30d'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  LLM_MODEL: z.string().default('claude-opus-4-8'),
+  LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
 });
 
 export const env = envSchema.parse(process.env);
