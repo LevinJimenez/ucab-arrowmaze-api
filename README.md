@@ -3,9 +3,9 @@
 [![CI](https://github.com/LevinJimenez/ucab-arrowmaze-api/actions/workflows/ci.yml/badge.svg)](https://github.com/LevinJimenez/ucab-arrowmaze-api/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-REST backend for the **Arrow Maze — Escape Puzzle** game. Players register, sync their game progress, and compete on per-level leaderboards. Level definitions are stored as opaque JSON blobs that the client interprets.
+REST backend for the **Arrow Maze — Escape Puzzle** game. Players register, sync their game progress, compete on per-level and survival-mode leaderboards, and generate brand-new levels with AI. Level definitions are stored as opaque JSON blobs that the client interprets.
 
-**Stack:** Node 22 · TypeScript 6 · Express 5 · Prisma 6 / PostgreSQL · pnpm · Vitest 4
+**Stack:** Node 22 · TypeScript 6 · Express 5 · Prisma 6 / PostgreSQL · Anthropic SDK · pnpm · Vitest 4
 
 ---
 
@@ -16,16 +16,16 @@ The project follows **Clean Architecture** (Uncle Bob). Dependencies point inwar
 ```mermaid
 graph TD
     subgraph L4["Layer 4 — Frameworks & Drivers"]
-        FW["src/app.ts · src/config/\ninfrastructure/strategies/\ninfrastructure/decorators/\ninfrastructure/services/"]
+        FW["src/app.ts · src/config/\ninfrastructure/repositories/\ninfrastructure/services/\ninfrastructure/strategies/\ninfrastructure/decorators/"]
     end
     subgraph L3["Layer 3 — Interface Adapters"]
-        IA["application/controllers/\napplication/routes/\napplication/mappers/\napplication/middleware/\napplication/factories/\ninfrastructure/repositories/"]
+        IA["application/controllers/\napplication/routes/\napplication/mappers/\napplication/middleware/\napplication/factories/"]
     end
     subgraph L2["Layer 2 — Use Cases"]
         UC["domain/use-cases/\ndomain/interfaces/"]
     end
     subgraph L1["Layer 1 — Entities / Domain"]
-        EN["domain/entities/\ndomain/errors/"]
+        EN["domain/entities/\ndomain/value-objects/\ndomain/errors/"]
     end
 
     FW -->|imports| IA
@@ -34,18 +34,25 @@ graph TD
     UC -->|imports| EN
 ```
 
-> See the full annotated diagram → [`docs/architecture.md`](docs/architecture.md)
+> See the full annotated diagram → [`docs/backend-architecture.svg`](docs/backend-architecture.svg) (source: [`.d2`](docs/backend-architecture.d2))
 
 ### Folder → Layer mapping
 
 | Layer | Folders |
 |---|---|
-| **1 — Entities** | `domain/entities/`, `domain/errors/` |
+| **1 — Entities** | `domain/entities/`, `domain/value-objects/`, `domain/errors/` |
 | **2 — Use Cases** | `domain/use-cases/`, `domain/interfaces/` |
-| **3 — Interface Adapters** | `application/*`, `infrastructure/repositories/` |
-| **4 — Frameworks & Drivers** | `infrastructure/{strategies,decorators,services}/`, `config/`, `app.ts` |
+| **3 — Interface Adapters** | `application/*` |
+| **4 — Frameworks & Drivers** | `infrastructure/*` (`repositories/`, `services/`, `strategies/`, `decorators/`), `config/`, `app.ts` |
 
-### Data-contract decision (Mechanic A)
+> **Why repositories live in Layer 4, not 3.** The concrete `Postgres*Repository` classes import
+> `PrismaClient`. Placing them in Layer 3 would make that an *outward* dependency (3 → 4), breaking
+> the Dependency Rule. Keeping them next to Prisma in Layer 4 makes `repository → Prisma` an
+> intra-layer detail, while the port they implement (`I*Repository`) stays in the domain — so the
+> arrow still points inward. The naming is the trap here: the folder `domain/` spans Layers 1–2,
+> and `infrastructure/` is all Layer 4.
+
+### Data-contract decision 
 
 The backend does **not** simulate game behaviour. It persists the *data contract* assumed by Mechanic A ("clear the board"). If the contract changes, impact is limited to the `LevelDefinition` invariants and the `upsertSchema` in `LevelController`. Level IDs are `string`; `data` is an opaque JSON blob.
 
@@ -56,12 +63,12 @@ The backend does **not** simulate game behaviour. It persists the *data contract
 | Pattern | Category | Where |
 |---|---|---|
 | Factory Method | Creational | [`src/application/factories/ResponseFactory.ts`](src/application/factories/ResponseFactory.ts) |
-| Adapter | Structural | [`src/infrastructure/repositories/Postgres*Repository.ts`](src/infrastructure/repositories/) — wrap Prisma behind domain ports |
+| Adapter | Structural | [`src/infrastructure/repositories/Postgres*Repository.ts`](src/infrastructure/repositories/) — wrap Prisma behind domain ports · [`src/infrastructure/services/LlmLevelGenerator.ts`](src/infrastructure/services/LlmLevelGenerator.ts) — wraps the Anthropic SDK behind `ILevelGenerator`, so swapping AI provider is a new adapter, not a domain change |
 | Facade | Structural | [`src/infrastructure/services/AuthFacade.ts`](src/infrastructure/services/AuthFacade.ts) |
 | Decorator | Structural | [`src/infrastructure/decorators/*UseCaseDecorator.ts`](src/infrastructure/decorators/) — AOP without libraries |
-| Strategy | Behavioural | [`src/infrastructure/strategies/*LeaderboardStrategy.ts`](src/infrastructure/strategies/) |
+| Strategy | Behavioural | [`src/infrastructure/strategies/*LeaderboardStrategy.ts`](src/infrastructure/strategies/) — three ranking policies for the per-level leaderboard. Deliberately **not** used for survival mode, which has a single policy: the ordering lives in the repository query instead. |
 
-> Class diagram → [`docs/class-diagram.md`](docs/class-diagram.md)
+> Class diagram → [`docs/class-diagram.svg`](docs/class-diagram.svg) (source: [`.d2`](docs/class-diagram.d2)) — all 79 classes, every structural relationship drawn.
 
 ---
 
@@ -121,6 +128,12 @@ JWT_SECRET=your-secret-at-least-16-chars
 JWT_EXPIRES_IN=30d
 PORT=3000
 NODE_ENV=development
+
+# AI level generation — optional. Without a key the app still starts normally
+# and only POST /levels/generate returns 502. Never commit a real key.
+ANTHROPIC_API_KEY=
+LLM_MODEL=claude-opus-4-8
+LLM_TIMEOUT_MS=30000
 ```
 
 Then generate the Prisma client and start the dev server:
@@ -169,7 +182,7 @@ The test suite is split into two independent layers:
 pnpm test:unit
 ```
 
-Covers Layers 1–2 (entities, use cases, mappers, middleware, AOP decorators, leaderboard strategies). Uses **fake in-memory repositories** instead of real Postgres. The "in-memory database" requirement from the course specification is fulfilled here — each fake stores data in a `Map` and resets between tests.
+Covers the domain core (entities, value objects, use cases) plus everything that can run without I/O: mappers, middleware, AOP decorators and leaderboard strategies. Uses **fake in-memory repositories** instead of real Postgres — and a `FakeLevelGenerator` instead of a real LLM, so unit tests never make a network call or cost money. The "in-memory database" requirement from the course specification is fulfilled here — each fake stores data in a `Map` and resets between tests.
 
 **Testing philosophy:**
 - *State over interaction*: assertions check return values and entity state, not internal calls (no `expect(mock).toHaveBeenCalledWith`).
@@ -210,7 +223,12 @@ All endpoints return `{ success, data?, message?, meta? }` except `/health` (raw
 | `GET` | `/levels` | — | 200 `LevelDto[]` | — |
 | `GET` | `/levels/{id}` | — | 200 `LevelDto` | 400 · 404 |
 | `PUT` | `/levels/{id}` | 🔒 Bearer | 200 `LevelDto` | 400 · 401 · 422 |
+| `POST` | `/levels/generate` | 🔒 Bearer | 200 `LevelData` | 401 · 422 · 429 · 502 |
+| `POST` | `/survival` | 🔒 Bearer | 201 `SurvivalEntryDto` | 401 · 422 |
+| `GET` | `/survival/leaderboard` | — | 200 `SurvivalEntryDto[]` | 422 |
 | `GET` | `/health` | — | 200 `{status, timestamp}` | — |
+
+`POST /levels/generate` takes `{ prompt, difficulty? }`, asks the LLM for a level, re-validates it through the `LevelData` invariants and **returns it without persisting** — the client stores it locally. It is rate-limited to **10 requests/minute per IP** (applied *before* auth, since it is the only endpoint that costs money).
 
 Full interactive docs with request/response schemas: **`/api-docs`**
 Raw OpenAPI spec (JSON): **`/api-docs.json`**
