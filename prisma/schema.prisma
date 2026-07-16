@@ -46,6 +46,19 @@ model LeaderboardEntry {
   @@map("leaderboard_entries")
 }
 
+model SurvivalEntry {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  username        String
+  boardsSolved    Int      @map("boards_solved")
+  durationSeconds Int      @map("duration_seconds")
+  totalScore      Int?     @map("total_score")
+  playedAt        DateTime @default(now()) @map("played_at")
+
+  @@index([durationSeconds, boardsSolved(sort: Desc)])
+  @@map("survival_entries")
+}
+
 model LevelDefinition {
   id         String   @id
   name       String

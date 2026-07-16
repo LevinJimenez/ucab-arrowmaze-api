@@ -164,6 +164,45 @@ const options: swaggerJsdoc.Options = {
           },
         },
 
+        // ── Survival mode ───────────────────────────────────────────────────
+        SubmitSurvivalRunRequest: {
+          type: 'object',
+          required: ['boardsSolved', 'durationSeconds'],
+          properties: {
+            boardsSolved: { type: 'integer', minimum: 0, example: 7 },
+            durationSeconds: { type: 'integer', minimum: 1, example: 120 },
+            totalScore: { type: 'integer', minimum: 0, example: 4200 },
+          },
+        },
+        SurvivalEntryDto: {
+          type: 'object',
+          required: ['userId', 'username', 'boardsSolved', 'durationSeconds', 'playedAt'],
+          properties: {
+            userId: { type: 'string', format: 'uuid' },
+            username: { type: 'string', example: 'alice' },
+            boardsSolved: { type: 'integer', example: 7 },
+            durationSeconds: { type: 'integer', example: 120 },
+            totalScore: { type: 'integer', example: 4200 },
+            playedAt: { type: 'string', format: 'date-time' },
+          },
+        },
+        SurvivalRunResponse: {
+          type: 'object',
+          required: ['success', 'data'],
+          properties: {
+            success: { type: 'boolean', example: true },
+            data: { $ref: '#/components/schemas/SurvivalEntryDto' },
+          },
+        },
+        SurvivalLeaderboardResponse: {
+          type: 'object',
+          required: ['success', 'data'],
+          properties: {
+            success: { type: 'boolean', example: true },
+            data: { type: 'array', items: { $ref: '#/components/schemas/SurvivalEntryDto' } },
+          },
+        },
+
         // ── Levels ──────────────────────────────────────────────────────────
         CellCoordinate: {
           type: 'array',
@@ -364,6 +403,68 @@ const options: swaggerJsdoc.Options = {
             },
             '400': {
               description: 'Invalid levelId',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
+            },
+          },
+        },
+      },
+
+      '/survival': {
+        post: {
+          summary: 'Submit a survival-mode run (boards solved within a fixed time)',
+          tags: ['Survival'],
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/SubmitSurvivalRunRequest' } } },
+          },
+          responses: {
+            '201': {
+              description: 'Run recorded successfully',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/SurvivalRunResponse' } } },
+            },
+            '401': {
+              description: 'Missing or invalid token',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
+            },
+            '422': {
+              description: 'Validation error',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
+            },
+          },
+        },
+      },
+
+      '/survival/leaderboard': {
+        get: {
+          summary: 'Get the ranked survival-mode leaderboard for a given duration',
+          tags: ['Survival'],
+          parameters: [
+            {
+              name: 'durationSeconds',
+              in: 'query',
+              required: true,
+              description: 'Survival mode duration in seconds (e.g. 60, 120, 180)',
+              schema: { type: 'integer', minimum: 1 },
+              example: 120,
+            },
+            {
+              name: 'limit',
+              in: 'query',
+              required: false,
+              description: 'Maximum number of entries to return (1-100, default 10)',
+              schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Ranked survival-mode entries',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/SurvivalLeaderboardResponse' } },
+              },
+            },
+            '422': {
+              description: 'Validation error (missing or invalid durationSeconds)',
               content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
             },
           },

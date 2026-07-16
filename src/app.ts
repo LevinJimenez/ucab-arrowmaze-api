@@ -8,6 +8,7 @@ import { PostgresUserRepository } from './infrastructure/repositories/PostgresUs
 import { PostgresProgressRepository } from './infrastructure/repositories/PostgresProgressRepository';
 import { PostgresLeaderboardRepository } from './infrastructure/repositories/PostgresLeaderboardRepository';
 import { PostgresLevelDefinitionRepository } from './infrastructure/repositories/PostgresLevelDefinitionRepository';
+import { PostgresSurvivalRepository } from './infrastructure/repositories/PostgresSurvivalRepository';
 import { BcryptPasswordService } from './infrastructure/services/BcryptPasswordService';
 import { UuidIdGenerator } from './infrastructure/services/UuidIdGenerator';
 import { ConsoleLogger } from './infrastructure/services/ConsoleLogger';
@@ -25,17 +26,21 @@ import { GetLeaderboardUseCase, GetLeaderboardInput } from './domain/use-cases/G
 import { GetLevelDefinitionsUseCase } from './domain/use-cases/GetLevelDefinitionsUseCase';
 import { GetLevelByIdUseCase } from './domain/use-cases/GetLevelByIdUseCase';
 import { UpsertLevelDefinitionUseCase } from './domain/use-cases/UpsertLevelDefinitionUseCase';
+import { SubmitSurvivalRunUseCase } from './domain/use-cases/SubmitSurvivalRunUseCase';
+import { GetSurvivalLeaderboardUseCase } from './domain/use-cases/GetSurvivalLeaderboardUseCase';
 import { IUseCase } from './domain/interfaces/IUseCase';
 
 import { AuthController } from './application/controllers/AuthController';
 import { ProgressController } from './application/controllers/ProgressController';
 import { LeaderboardController } from './application/controllers/LeaderboardController';
 import { LevelController } from './application/controllers/LevelController';
+import { SurvivalController } from './application/controllers/SurvivalController';
 
 import { createAuthRouter } from './application/routes/authRoutes';
 import { createProgressRouter } from './application/routes/progressRoutes';
 import { createLeaderboardRouter } from './application/routes/leaderboardRoutes';
 import { createLevelRouter } from './application/routes/levelRoutes';
+import { createSurvivalRouter } from './application/routes/survivalRoutes';
 import { errorHandler } from './application/middleware/errorHandler';
 import { createAuthMiddleware } from './application/middleware/authMiddleware';
 import { setupSwagger } from './config/swagger';
@@ -56,6 +61,7 @@ const userRepo = new PostgresUserRepository(prisma);
 const progressRepo = new PostgresProgressRepository(prisma);
 const leaderboardRepo = new PostgresLeaderboardRepository(prisma);
 const levelRepo = new PostgresLevelDefinitionRepository(prisma);
+const survivalRepo = new PostgresSurvivalRepository(prisma);
 const leaderboardStrategy = new PerLevelLeaderboardStrategy();
 
 // --- Helper de composición AOP (logging + manejo de excepciones) ---
@@ -96,6 +102,15 @@ const upsertLevelDefinitionUseCase = withAop(
   'UpsertLevelDefinition',
 );
 
+const submitSurvivalRunUseCase = withAop(
+  new SubmitSurvivalRunUseCase(survivalRepo),
+  'SubmitSurvivalRun',
+);
+const getSurvivalLeaderboardUseCase = withAop(
+  new GetSurvivalLeaderboardUseCase(survivalRepo),
+  'GetSurvivalLeaderboard',
+);
+
 // --- Controllers ---
 // Los controllers dependen de IUseCase<I, O>; los use cases decorados con AOP
 // son IUseCase<I, O>, por lo que el wiring no necesita ningún cast.
@@ -103,6 +118,7 @@ const authController = new AuthController(registerUseCase, authenticateUseCase, 
 const progressController = new ProgressController(syncProgressUseCase, progressRepo);
 const leaderboardController = new LeaderboardController(getLeaderboardUseCase);
 const levelController = new LevelController(getLevelDefinitionsUseCase, getLevelByIdUseCase, upsertLevelDefinitionUseCase);
+const survivalController = new SurvivalController(submitSurvivalRunUseCase, getSurvivalLeaderboardUseCase);
 
 const authMiddleware = createAuthMiddleware(tokenService);
 
@@ -110,6 +126,7 @@ app.use('/auth', createAuthRouter(authController));
 app.use('/progress', createProgressRouter(progressController, authMiddleware));
 app.use('/leaderboard', createLeaderboardRouter(leaderboardController));
 app.use('/levels', createLevelRouter(levelController, authMiddleware));
+app.use('/survival', createSurvivalRouter(survivalController, authMiddleware));
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
