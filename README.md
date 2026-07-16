@@ -132,8 +132,14 @@ NODE_ENV=development
 # AI level generation — optional. Without a key the app still starts normally
 # and only POST /levels/generate returns 502. Never commit a real key.
 ANTHROPIC_API_KEY=
-LLM_MODEL=claude-opus-4-8
-LLM_TIMEOUT_MS=30000
+LLM_MODEL=claude-sonnet-5
+LLM_TIMEOUT_MS=120000
+# Optional (low|medium|high). The adapter does not send `thinking`, so on
+# claude-sonnet-5 adaptive thinking stays ON and defaults to effort=high —
+# which made calls take 45-85s and sometimes burn the whole token budget on
+# reasoning. `low` drops latency to ~10-25s and produces better silhouettes.
+# Leave empty on Haiku 4.5, which rejects the parameter.
+LLM_EFFORT=low
 ```
 
 Then generate the Prisma client and start the dev server:
