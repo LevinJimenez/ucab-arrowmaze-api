@@ -20,6 +20,11 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env.docker
+    environment:
+      # Secreto real: nunca en .env.docker (trackeado). Viene del .env local
+      # (gitignored) en la raiz del repo, que Docker Compose autolee para
+      # resolver ${...}. Falla rapido y claro si nadie lo definio.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?Set ANTHROPIC_API_KEY in your local .env file (see .env.example)}
     ports:
       - "3000:3000"
     depends_on:

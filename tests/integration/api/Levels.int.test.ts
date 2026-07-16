@@ -17,8 +17,10 @@ vi.mock('@anthropic-ai/sdk', () => ({
     return {
       messages: {
         parse: vi.fn().mockResolvedValue({
+          // El modelo devuelve la silueta como grid ASCII; el adaptador la
+          // convierte a cells [[0,0],[0,1],[1,0]] antes de responder.
           parsed_output: {
-            cells: [[0, 0], [0, 1], [1, 0]],
+            grid: ['110', '100'],
             arrows: [{ id: 'a1', path: [[0, 0], [0, 1]], color: '#EF476F' }],
             lives: 3,
           },
