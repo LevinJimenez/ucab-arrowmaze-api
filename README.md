@@ -66,7 +66,7 @@ The backend does **not** simulate game behaviour. It persists the *data contract
 | Adapter | Structural | [`src/infrastructure/repositories/Postgres*Repository.ts`](src/infrastructure/repositories/) — wrap Prisma behind domain ports · [`src/infrastructure/services/LlmLevelGenerator.ts`](src/infrastructure/services/LlmLevelGenerator.ts) — wraps the Anthropic SDK behind `ILevelGenerator`, so swapping AI provider is a new adapter, not a domain change |
 | Facade | Structural | [`src/infrastructure/services/AuthFacade.ts`](src/infrastructure/services/AuthFacade.ts) |
 | Decorator | Structural | [`src/infrastructure/decorators/*UseCaseDecorator.ts`](src/infrastructure/decorators/) — AOP without libraries |
-| Strategy | Behavioural | [`src/infrastructure/strategies/*LeaderboardStrategy.ts`](src/infrastructure/strategies/) — three ranking policies for the per-level leaderboard. Deliberately **not** used for survival mode, which has a single policy: the ordering lives in the repository query instead. |
+| Strategy | Behavioural | [`src/infrastructure/strategies/*LeaderboardStrategy.ts`](src/infrastructure/strategies/) — three ranking policies for the per-level leaderboard. The ranking is a **read-time policy** over an immutable log of runs: the active one returns one row per player (their best), which is why "one entry per player" lives here and not in SQL. Deliberately **not** used for survival mode, which has a single policy: the ordering lives in the repository query instead. |
 
 > Class diagram → [`docs/class-diagram.svg`](docs/class-diagram.svg) (source: [`.d2`](docs/class-diagram.d2)) — all 79 classes, every structural relationship drawn.
 
@@ -119,7 +119,13 @@ corepack enable
 pnpm install
 ```
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root.
+
+> **This file is for local development and the integration tests only.** The primary database is the
+> **PostgreSQL instance on Railway**, which backs production and reads its own variables from the
+> Railway dashboard — it never sees this file (`.dockerignore` keeps `.env*` out of the image). See
+> [Deploy on Railway](#deploy-on-railway). Point `DATABASE_URL` here at a database you are allowed to
+> destroy: the integration tests wipe every table between cases.
 
 ```env
 DATABASE_URL="postgresql://user:pass@host:6543/db?pgbouncer=true"
@@ -161,7 +167,7 @@ Open **`http://localhost:3000/api-docs`** to explore the interactive API documen
 docker compose up --build
 ```
 
-This builds the API image (Prisma client generated for the Linux container, TypeScript compiled) and starts its own Postgres 16 container. On startup, the API applies the schema with `prisma db push` before listening — no manual migration step required. The stack uses `.env.docker` (committed, dev-only secrets) and its own named volume, completely independent of any external database (e.g. Supabase) you may have configured in `.env`.
+This builds the API image (Prisma client generated for the Linux container, TypeScript compiled) and starts its own Postgres 16 container. On startup, the API applies the schema with `prisma db push` before listening — no manual migration step required. The stack uses `.env.docker` (committed, dev-only secrets) and its own named volume, completely independent of both the production database on Railway and the external database configured in `.env` — in this project, the Supabase instance used for development and the integration tests.
 
 Once it's up:
 
@@ -253,7 +259,7 @@ pnpm test:coverage   # enforces thresholds: ≥90% domain, ≥85% global
 pnpm test:integration
 ```
 
-End-to-end HTTP tests with **supertest** against the full Express app. Require a live Postgres instance (configured in `.env`). Files run sequentially (`--no-file-parallelism`) because they share one database and clean their tables in `beforeEach`.
+End-to-end HTTP tests with **supertest** against the full Express app. Require a live Postgres instance (configured in `.env` — the Supabase development instance, **never** the Railway production database). Files run sequentially (`--no-file-parallelism`) because they share one database and clean their tables in `beforeEach` — which is also why the target must be disposable.
 
 ### Run everything
 
@@ -273,7 +279,7 @@ All endpoints return `{ success, data?, message?, meta? }` except `/health` (raw
 | `POST` | `/auth/login` | — | 200 `{user, token}` | 401 · 422 |
 | `GET` | `/progress` | 🔒 Bearer | 200 `ProgressDto` | 401 · 404 |
 | `PUT` | `/progress` | 🔒 Bearer | 200 `ProgressDto` | 401 · 422 |
-| `GET` | `/leaderboard/{levelId}` | — | 200 `LeaderboardEntryDto[]` | 400 |
+| `GET` | `/leaderboard/{levelId}` | — | 200 `LeaderboardEntryDto[]` — one entry per player, their best run | 400 |
 | `GET` | `/levels` | — | 200 `LevelDto[]` | — |
 | `GET` | `/levels/{id}` | — | 200 `LevelDto` | 400 · 404 |
 | `PUT` | `/levels/{id}` | 🔒 Bearer | 200 `LevelDto` | 400 · 401 · 422 |
