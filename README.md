@@ -178,6 +178,54 @@ docker compose down -v     # stop containers and wipe the Postgres volume
 
 ---
 
+## Deploy on Railway
+
+Production runs on [Railway](https://railway.com): one project with **two services** — this API
+(built from the `Dockerfile`, branch `main`) and a **PostgreSQL** instance. They talk over the
+project's private network, so no public database endpoint is exposed.
+
+### Setup
+
+1. Create a project and add **PostgreSQL** (`+ New → Database → Add PostgreSQL`). It needs no
+   configuration — Railway provisions the database, user and password, and exposes `DATABASE_URL`.
+2. In the **same project**, add the service from this GitHub repo and point it at `main`. Railway
+   detects the `Dockerfile` and builds with it.
+3. Set these variables on the **API** service:
+
+| Variable | Value | Notes |
+|---|---|---|
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | reference to the Postgres service |
+| `DIRECT_URL` | `${{Postgres.DATABASE_URL}}` | **the same URL** — see below |
+| `JWT_SECRET` | a ≥16-char random secret | required; without it the app crash-loops |
+| `LLM_EFFORT` | `low` | **required in production** — see below |
+| `ANTHROPIC_API_KEY` | your Anthropic key (mark it *sealed*) | optional |
+
+`PORT` and `NODE_ENV` need no configuration: Railway injects the former (`app.listen(env.PORT)`
+reads it) and the `Dockerfile` sets the latter. Railway ignores `EXPOSE` — it only requires the app
+to listen on `$PORT`.
+
+4. Enable **Wait for CI** so a merge to `main` only deploys after GitHub Actions passes. It needs
+   GitHub's *checks* and *actions* permissions; if the toggle reverts on its own, accept the App's
+   updated permissions.
+5. **Settings → Networking → Generate Domain** to expose the service publicly.
+
+### Why the schema needs no manual step
+
+The container's `CMD` is `prisma db push --skip-generate && node dist/app.js`, so **every deploy
+applies the schema before the app listens**. A brand-new database gets its tables on first boot, and
+a schema change can never ship without its migration — nobody has to remember to run anything.
+
+### Two things that will bite you
+
+- **`DIRECT_URL` is not redundant.** Prisma needs a direct (non-pooled) connection to apply schema.
+  Railway's Postgres has no pooler, so one URL serves both — but if `DIRECT_URL` is missing,
+  `prisma db push` fails and the container never starts.
+- **`LLM_EFFORT` has no default in code**, and `.env.docker` never reaches the image. Without it the
+  adapter omits `effort`; on `claude-sonnet-5` adaptive thinking then defaults to `high`, turning a
+  ~15s call into 45–85s. No test catches this — it only shows up as a slow endpoint in production.
+
+---
+
 ## Running Tests
 
 The test suite is split into two independent layers:
