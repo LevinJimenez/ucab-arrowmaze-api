@@ -285,7 +285,7 @@ All endpoints return `{ success, data?, message?, meta? }` except `/health` (raw
 | `PUT` | `/levels/{id}` | 🔒 Bearer | 200 `LevelDto` | 400 · 401 · 422 |
 | `POST` | `/levels/generate` | 🔒 Bearer | 200 `LevelData` | 401 · 422 · 429 · 502 |
 | `POST` | `/survival` | 🔒 Bearer | 201 `SurvivalEntryDto` | 401 · 422 |
-| `GET` | `/survival/leaderboard` | — | 200 `SurvivalEntryDto[]` | 422 |
+| `GET` | `/survival/leaderboard` | — | 200 `SurvivalEntryDto[]` — one entry per player, their best run | 422 |
 | `GET` | `/health` | — | 200 `{status, timestamp}` | — |
 
 `POST /levels/generate` takes `{ prompt, difficulty? }`, asks the LLM for a level, re-validates it through the `LevelData` invariants and **returns it without persisting** — the client stores it locally. It is rate-limited to **10 requests/minute per IP** (applied *before* auth, since it is the only endpoint that costs money).
