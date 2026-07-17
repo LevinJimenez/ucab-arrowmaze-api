@@ -108,10 +108,12 @@ export class LlmLevelGenerator implements ILevelGenerator {
       const message = await client.messages.parse(
         {
           model: env.LLM_MODEL,
-          // En claude-sonnet-5 (y familia 4.6+) omitir "thinking" deja el
-          // thinking adaptativo ENCENDIDO con effort=high por defecto: las
+          // En claude-sonnet-5 (el default) y fable-5, omitir "thinking" deja
+          // el thinking adaptativo ENCENDIDO con effort=high por defecto: las
           // llamadas tardaban 45-85s y a veces consumían todo max_tokens en
-          // razonamiento (parsed_output null). No se envía "thinking"
+          // razonamiento (parsed_output null). OJO: en la familia Opus 4.7/4.8
+          // es al revés — omitirlo lo deja APAGADO —, así que esto describe el
+          // modelo por defecto, no cualquier LLM_MODEL. No se envía "thinking"
           // explícito (Fable 5 rechaza {type:"disabled"}); el control
           // portable es effort + margen de max_tokens.
           max_tokens: 16000,
