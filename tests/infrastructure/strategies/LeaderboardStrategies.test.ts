@@ -13,6 +13,7 @@ import { TimeSeconds } from '../../../src/domain/value-objects/TimeSeconds';
 const makeEntry = (
   userId: string, username: string, levelId: string,
   score: number, moves: number,
+  timeSeconds = 30, rankedAt: Date = new Date('2026-01-01T00:00:00.000Z'),
 ): LeaderboardEntry =>
   new LeaderboardEntry({
     userId: UserId.create(userId),
@@ -20,8 +21,8 @@ const makeEntry = (
     levelId: LevelId.create(levelId),
     score: Score.create(score),
     moves: Moves.create(moves),
-    timeSeconds: TimeSeconds.create(30),
-    rankedAt: new Date(),
+    timeSeconds: TimeSeconds.create(timeSeconds),
+    rankedAt,
   });
 
 // alice: level_1 score=900 moves=5 | level_2 score=850 moves=4
@@ -68,6 +69,102 @@ describe('PerLevelLeaderboardStrategy', () => {
 
     // Assert
     expect(entries[0].score.value).toBe(original[0].score.value);
+  });
+
+  it('should_return_only_the_best_mark_when_the_same_player_has_several_on_the_same_level', () => {
+    // Arrange — el mismo jugador (dave) con 3 intentos en level_1, distinto score.
+    const runs = [
+      makeEntry('D', 'dave', 'level_1', 600, 10),
+      makeEntry('D', 'dave', 'level_1', 950, 6),
+      makeEntry('D', 'dave', 'level_1', 800, 8),
+    ];
+
+    // Act
+    const result = strategy.calculateRanking(runs, 10);
+
+    // Assert — una sola fila, la mejor de las tres.
+    expect(result).toHaveLength(1);
+    expect(result[0].score.value).toBe(950);
+  });
+
+  it('should_break_a_score_tie_by_lower_time_seconds', () => {
+    // Arrange
+    const slower = makeEntry('S', 'slow', 'level_1', 900, 5, 20);
+    const faster = makeEntry('F', 'fast', 'level_1', 900, 5, 10);
+
+    // Act
+    const result = strategy.calculateRanking([slower, faster], 10);
+
+    // Assert
+    expect(result[0].username.value).toBe('fast');
+    expect(result[1].username.value).toBe('slow');
+  });
+
+  it('should_break_a_score_and_time_tie_by_fewer_moves', () => {
+    // Arrange
+    const moreMoves = makeEntry('M', 'more', 'level_1', 900, 8, 15);
+    const fewerMoves = makeEntry('L', 'fewer', 'level_1', 900, 3, 15);
+
+    // Act
+    const result = strategy.calculateRanking([moreMoves, fewerMoves], 10);
+
+    // Assert
+    expect(result[0].username.value).toBe('fewer');
+    expect(result[1].username.value).toBe('more');
+  });
+
+  it('should_break_a_full_tie_by_earliest_rankedAt_regardless_of_input_order', () => {
+    // Arrange — mismo score/tiempo/movimientos, distinto rankedAt.
+    const earlier = makeEntry('E', 'earlier', 'level_1', 900, 5, 15, new Date('2026-01-01T00:00:00.000Z'));
+    const later = makeEntry('L', 'later', 'level_1', 900, 5, 15, new Date('2026-01-02T00:00:00.000Z'));
+
+    // Act — el orden de entrada no debe alterar el resultado (determinismo).
+    const forward = strategy.calculateRanking([earlier, later], 10);
+    const reversed = strategy.calculateRanking([later, earlier], 10);
+
+    // Assert
+    expect(forward[0].username.value).toBe('earlier');
+    expect(forward[1].username.value).toBe('later');
+    expect(reversed[0].username.value).toBe('earlier');
+    expect(reversed[1].username.value).toBe('later');
+  });
+
+  it('should_keep_both_entries_when_the_same_player_appears_on_different_levels', () => {
+    // Arrange
+    const onLevel1 = makeEntry('P', 'pat', 'level_1', 900, 5);
+    const onLevel2 = makeEntry('P', 'pat', 'level_2', 700, 5);
+
+    // Act
+    const result = strategy.calculateRanking([onLevel1, onLevel2], 10);
+
+    // Assert — misma clave userId pero distinto levelId: sobreviven ambas.
+    expect(result).toHaveLength(2);
+  });
+
+  // Caso de regresión observado en producción: el mismo usuario (zarah_) ocupaba
+  // 4 puestos del top con 4 intentos del mismo nivel, y una marca de 00:04 quedó
+  // en 5ta posición por detrás de marcas de 00:07 con el mismo score (el sort
+  // original solo ordenaba por score, sin desempate por tiempo).
+  it('should_produce_the_correct_ranking_for_the_production_regression_case', () => {
+    // Arrange
+    const runs = [
+      makeEntry('zarah', 'zarah_', 'level_1', 1350, 6, 7),
+      makeEntry('zarah', 'zarah_', 'level_1', 1350, 6, 5),
+      makeEntry('zarah', 'zarah_', 'level_1', 1350, 6, 5),
+      makeEntry('zarah', 'zarah_', 'level_1', 1350, 6, 4),
+      makeEntry('alejandro', 'alejandro', 'level_1', 1350, 6, 7),
+      makeEntry('levin', 'levin', 'level_1', 1050, 6, 11),
+    ];
+
+    // Act
+    const result = strategy.calculateRanking(runs, 10);
+
+    // Assert — zarah_ (00:04) 1°, alejandro 2°, levin 3°: 3 filas, no 6.
+    expect(result).toHaveLength(3);
+    expect(result[0].username.value).toBe('zarah_');
+    expect(result[0].timeSeconds.value).toBe(4);
+    expect(result[1].username.value).toBe('alejandro');
+    expect(result[2].username.value).toBe('levin');
   });
 });
 
@@ -159,5 +256,18 @@ describe('CombinedLeaderboardStrategy', () => {
     // Assert: zero (combined=0.7*0.9+0=0.63) > alice (combined=0.7*0.1+0.3*1=0.37)
     expect(result[0].username.value).toBe('zero');
     expect(result[1].username.value).toBe('alice');
+  });
+
+  it('should_deduplicate_by_player_and_level_keeping_the_highest_combined_score', () => {
+    // Arrange — mismo jugador (dave), mismo nivel, dos intentos.
+    const worse = makeEntry('D', 'dave', 'level_1', 600, 10); // combined=0.7*0.6+0.3*0.1=0.45
+    const better = makeEntry('D', 'dave', 'level_1', 900, 5); // combined=0.7*0.9+0.3*0.2=0.69
+
+    // Act
+    const result = strategy.calculateRanking([worse, better], 10);
+
+    // Assert — una sola fila, la del combinedScore más alto.
+    expect(result).toHaveLength(1);
+    expect(result[0].score.value).toBe(900);
   });
 });
