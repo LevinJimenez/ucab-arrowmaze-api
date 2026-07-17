@@ -457,7 +457,11 @@ const options: swaggerJsdoc.Options = {
 
       '/survival/leaderboard': {
         get: {
-          summary: 'Get the ranked survival-mode leaderboard for a given duration',
+          summary: 'Get the per-player ranked survival-mode leaderboard for a given duration (one entry per player, their best run)',
+          description:
+            'Returns one entry per player — their single best run for this duration, not ' +
+            'every run. Ranking order: boardsSolved (higher first), then totalScore (higher ' +
+            'first), then playedAt (earlier first).',
           tags: ['Survival'],
           parameters: [
             {
