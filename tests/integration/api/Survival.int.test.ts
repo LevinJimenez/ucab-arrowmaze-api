@@ -103,6 +103,34 @@ describe('Survival API — integration', () => {
     expect(res.body.success).toBe(false);
   }, TIMEOUT);
 
+  it('returns a single row with the best run when the same player submits two runs for the same duration', async () => {
+    // durationSeconds único para no chocar con corridas de otros tests en el
+    // mismo archivo (GetSurvivalLeaderboardUseCase no lleva caché, pero los
+    // datos de otros tests en la misma duración sí contaminarían el conteo).
+    const uniqueDuration = 121;
+
+    const registerRes = await request(app)
+      .post('/auth/register')
+      .send({ username: 'player1', email: 'player1@example.com', password: 'password123' });
+    const token: string = registerRes.body.data.token;
+
+    await request(app)
+      .post('/survival')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ boardsSolved: 4, durationSeconds: uniqueDuration });
+    await request(app)
+      .post('/survival')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ boardsSolved: 9, durationSeconds: uniqueDuration });
+
+    const res = await request(app).get(`/survival/leaderboard?durationSeconds=${uniqueDuration}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].username).toBe('player1');
+    expect(res.body.data[0].boardsSolved).toBe(9);
+  }, TIMEOUT);
+
   it('GET /survival/leaderboard respects the limit query param and ranks by boardsSolved', async () => {
     const player1 = await request(app)
       .post('/auth/register')
