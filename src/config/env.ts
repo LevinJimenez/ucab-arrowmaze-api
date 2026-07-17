@@ -6,7 +6,10 @@ dotenv.config();
 const envSchema = z.object({
   PORT: z.coerce.number().default(3000),
   DATABASE_URL: z.string().url(),
-  DIRECT_URL: z.string().url().optional(), // Solo necesario para migraciones (Supabase)
+  // Conexión SIN pooler, que Prisma necesita para aplicar esquema. Solo difiere
+  // de DATABASE_URL si el proveedor tiene pooler (Supabase, la BD de desarrollo
+  // y tests): en Railway (producción, sin pooler) es la misma URL.
+  DIRECT_URL: z.string().url().optional(),
   JWT_SECRET: z.string().min(16),
   JWT_EXPIRES_IN: z.string().default('30d'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
