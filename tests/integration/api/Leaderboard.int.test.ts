@@ -94,4 +94,48 @@ describe('Leaderboard API — integration', () => {
     expect(res.body.data).toHaveLength(1);
     expect(res.body.data[0].username).toBe('player1');
   }, TIMEOUT);
+
+  it('returns a single row with the best score when the same player syncs the same level twice', async () => {
+    // levelId único para no chocar con la caché del leaderboard (TTL 30s,
+    // clave lb:<levelId>:<limit>) de tests anteriores que ya consultaron level_1.
+    const uniqueLevelId = `level_dedup_${Date.now()}`;
+
+    const registerRes = await request(app)
+      .post('/auth/register')
+      .send({ username: 'player1', email: 'player1@example.com', password: 'password123' });
+    const token: string = registerRes.body.data.token;
+
+    await request(app)
+      .put('/progress')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        completedLevels: [uniqueLevelId],
+        bestScores: { [uniqueLevelId]: 700 },
+        currentLevelId: uniqueLevelId,
+        lastLevelId: uniqueLevelId,
+        lastScore: 700,
+        lastMoves: 12,
+        lastTimeSeconds: 40,
+      });
+
+    await request(app)
+      .put('/progress')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        completedLevels: [uniqueLevelId],
+        bestScores: { [uniqueLevelId]: 950 },
+        currentLevelId: uniqueLevelId,
+        lastLevelId: uniqueLevelId,
+        lastScore: 950,
+        lastMoves: 8,
+        lastTimeSeconds: 30,
+      });
+
+    const res = await request(app).get(`/leaderboard/${uniqueLevelId}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].username).toBe('player1');
+    expect(res.body.data[0].score).toBe(950);
+  }, TIMEOUT);
 });

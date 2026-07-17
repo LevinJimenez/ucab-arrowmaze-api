@@ -393,7 +393,11 @@ const options: swaggerJsdoc.Options = {
 
       '/leaderboard/{levelId}': {
         get: {
-          summary: 'Get the ranked leaderboard for a specific level',
+          summary: 'Get the per-player ranked leaderboard for a specific level (one entry per player, their best run)',
+          description:
+            'Returns one entry per player — their single best run on this level, not every ' +
+            'attempt. Tie-break order when ranking: score (higher first), then time in ' +
+            'seconds (lower first), then moves (fewer first).',
           tags: ['Leaderboard'],
           parameters: [
             {
