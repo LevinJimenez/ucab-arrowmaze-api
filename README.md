@@ -33,6 +33,7 @@ graph TD
     IA -->|imports| UC
     UC -->|imports| EN
 ```
+![Class Diagram](docs/class-diagram.svg)
 
 > See the full annotated diagram → [`docs/backend-architecture.svg`](docs/backend-architecture.svg) (source: [`.d2`](docs/backend-architecture.d2))
 
