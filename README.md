@@ -35,6 +35,8 @@ graph TD
 ```
 ![Class Diagram](docs/class-diagram.svg)
 
+> 🔍 The class diagram is large — to **zoom and pan** it comfortably, open the interactive viewer in a browser: [`docs/class-diagram-viewer.html`](docs/class-diagram-viewer.html) (wheel = zoom, drag = pan).
+
 > See the full annotated diagram → [`docs/backend-architecture.svg`](docs/backend-architecture.svg) (source: [`.d2`](docs/backend-architecture.d2))
 
 ### Folder → Layer mapping
@@ -69,7 +71,7 @@ The backend does **not** simulate game behaviour. It persists the *data contract
 | Decorator | Structural | [`src/infrastructure/decorators/*UseCaseDecorator.ts`](src/infrastructure/decorators/) — AOP without libraries |
 | Strategy | Behavioural | [`src/infrastructure/strategies/*LeaderboardStrategy.ts`](src/infrastructure/strategies/) — three ranking policies for the per-level leaderboard. The ranking is a **read-time policy** over an immutable log of runs: the active one returns one row per player (their best), which is why "one entry per player" lives here and not in SQL. Deliberately **not** used for survival mode, which has a single policy: the ordering lives in the repository query instead. |
 
-> Class diagram → [`docs/class-diagram.svg`](docs/class-diagram.svg) (source: [`.d2`](docs/class-diagram.d2)) — all 79 classes, every structural relationship drawn.
+> Class diagram → [`docs/class-diagram.svg`](docs/class-diagram.svg) (source: [`.d2`](docs/class-diagram.d2)) — all 85 classes, every structural relationship drawn. Zoomable viewer: [`docs/class-diagram-viewer.html`](docs/class-diagram-viewer.html).
 
 ---
 
