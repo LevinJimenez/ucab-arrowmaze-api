@@ -24,10 +24,19 @@
 #  Cobertura: incluye Fase D — modo Supervivencia (SurvivalEntry) y generacion de
 #  niveles con IA (ILevelGenerator). Ninguna clase queda aislada.
 #
-#  Render:  d2 --theme 0 --layout elk docs/class-diagram.d2 docs/class-diagram.svg
+#  Render:  d2 --theme 0 --layout elk --pad 25 --elk-padding "[top=20,left=25,bottom=20,right=25]" --elk-nodeNodeBetweenLayers 55 docs/class-diagram.d2 docs/class-diagram.svg
+#           (ELK rutea ortogonal y rodea las cajas; los flags compactan sin
+#            asfixiar los canales de ruteo de las flechas)
 # =============================================================
 
 direction: down
+# Layout con ELK (NO grid): ELK rutea las flechas de forma ORTOGONAL, doblando
+# en angulo recto para RODEAR las cajas por los canales de espacio, en vez de
+# cruzarlas. Ese es el motivo de que el diagrama sea amplio: el espacio libre
+# a los lados es la "autopista" por donde bajan las flechas entre capas.
+# (Alternativa compacta: `grid-columns: 1` apila las capas en bandas y reduce
+#  el tamano a ~11000x8400, PERO el router de grid manda las flechas por encima
+#  de las clases. Se prefirio la legibilidad.)
 
 # =============================================================
 #  CAPA 4 · FRAMEWORKS & DRIVERS
@@ -405,7 +414,10 @@ capa2: "CAPA 2 · Use Cases" {
 capa1: "CAPA 1 · Modelo de Dominio" {
   style: { fill: "#FFFBEB"; stroke: "#D97706"; font-size: 24; bold: true }
 
-  aggregates: "Aggregates" {
+  # Cada agregado en su propio recuadro: la raiz + los Value Objects que SOLO
+  # el usa. Los VO compartidos por 2+ agregados viven en "shared" (mas abajo):
+  # un VO es reutilizable, no propiedad de un agregado (DDD).
+  aggUser: "Agregado · User" {
     style: { fill: "#FEF3C7"; stroke: "#B45309" }
 
     User: "User   <<Aggregate Root>>" {
@@ -416,6 +428,23 @@ capa1: "CAPA 1 · Modelo de Dominio" {
       "+passwordHash": PasswordHash
       "+createdAt": Date
     }
+    Email: "Email   <<Value Object>>" {
+      shape: class
+      "+value": string
+      "+create(raw)": Email
+      "+equals(o)": boolean
+    }
+    PasswordHash: "PasswordHash   <<Value Object>>" {
+      shape: class
+      "+value": string
+      "+create(raw)": PasswordHash
+      "+equals(o)": boolean
+    }
+  }
+
+  aggProgress: "Agregado · PlayerProgress" {
+    style: { fill: "#FEF3C7"; stroke: "#B45309" }
+
     PlayerProgress: "PlayerProgress   <<Aggregate Root>>" {
       shape: class
       "+userId": UserId
@@ -425,6 +454,18 @@ capa1: "CAPA 1 · Modelo de Dominio" {
       "+isLevelCompleted(levelId)": boolean
       "+getBestScore(levelId)": "Score?"
     }
+    LevelScore: "LevelScore   <<Value Object>>" {
+      shape: class
+      "+levelId": LevelId
+      "+score": Score
+      "+create(levelId, score)": LevelScore
+      "+equals(o)": boolean
+    }
+  }
+
+  aggLevel: "Agregado · LevelDefinition" {
+    style: { fill: "#FEF3C7"; stroke: "#B45309" }
+
     LevelDefinition: "LevelDefinition   <<Aggregate Root>>" {
       shape: class
       "+id": LevelId
@@ -435,6 +476,48 @@ capa1: "CAPA 1 · Modelo de Dominio" {
       "+cellCount()": number
       "+arrowCount()": number
     }
+    LevelName: "LevelName   <<Value Object>>" {
+      shape: class
+      "+value": string
+      "+create(raw)": LevelName
+      "+equals(o)": boolean
+    }
+    Difficulty: "Difficulty   <<Value Object>>" {
+      shape: class
+      "+value": "easy|medium|hard"
+      "+create(raw)": Difficulty
+      "+equals(o)": boolean
+    }
+    ParMoves: "ParMoves   <<Value Object>>" {
+      shape: class
+      "+value": "number (>0)"
+      "+create(raw)": ParMoves
+      "+equals(o)": boolean
+    }
+    LevelData: "LevelData   <<Value Object>>" {
+      shape: class
+      "+cells": "Cell[]"
+      "+arrows": "ArrowData[]"
+      "+lives": "number?"
+      "+timeLimitSeconds": "number?"
+      "+create(props)": LevelData
+      "+toPrimitives()": LevelDataProps
+    }
+    ArrowData: "ArrowData   <<type>>" {
+      shape: class
+      "+id": string
+      "+path": "Cell[]"
+      "+color": string
+    }
+    Cell: "Cell   <<type>>" {
+      shape: class
+      "+tuple": "[number, number]"
+    }
+  }
+
+  aggLeaderboard: "Agregado · LeaderboardEntry" {
+    style: { fill: "#FEF3C7"; stroke: "#B45309" }
+
     LeaderboardEntry: "LeaderboardEntry   <<Aggregate Root>>" {
       shape: class
       "+userId": UserId
@@ -445,6 +528,23 @@ capa1: "CAPA 1 · Modelo de Dominio" {
       "+timeSeconds": TimeSeconds
       "+rankedAt": Date
     }
+    Moves: "Moves   <<Value Object>>" {
+      shape: class
+      "+value": "number (>=0)"
+      "+create(raw)": Moves
+      "+equals(o)": boolean
+    }
+    TimeSeconds: "TimeSeconds   <<Value Object>>" {
+      shape: class
+      "+value": "number (>=0)"
+      "+create(raw)": TimeSeconds
+      "+equals(o)": boolean
+    }
+  }
+
+  aggSurvival: "Agregado · SurvivalEntry" {
+    style: { fill: "#FEF3C7"; stroke: "#B45309" }
+
     SurvivalEntry: "SurvivalEntry   <<Aggregate Root>>" {
       shape: class
       "+userId": UserId
@@ -453,6 +553,47 @@ capa1: "CAPA 1 · Modelo de Dominio" {
       "+durationSeconds": Duration
       "+totalScore": "Score?"
       "+playedAt": Date
+    }
+    BoardsSolved: "BoardsSolved   <<Value Object>>" {
+      shape: class
+      "+value": "number (>=0)"
+      "+create(raw)": BoardsSolved
+      "+equals(o)": boolean
+    }
+    Duration: "Duration   <<Value Object>>" {
+      shape: class
+      "+value": "number (>0) seg"
+      "+create(raw)": Duration
+      "+equals(o)": boolean
+    }
+  }
+
+  shared: "Value Objects compartidos (shared kernel · usados por 2+ agregados)" {
+    style: { fill: "#FEF9C3"; stroke: "#CA8A04" }
+
+    UserId: "UserId   <<Value Object>>" {
+      shape: class
+      "+value": string
+      "+create(raw)": UserId
+      "+equals(o)": boolean
+    }
+    Username: "Username   <<Value Object>>" {
+      shape: class
+      "+value": string
+      "+create(raw)": Username
+      "+equals(o)": boolean
+    }
+    LevelId: "LevelId   <<Value Object>>" {
+      shape: class
+      "+value": string
+      "+create(raw)": LevelId
+      "+equals(o)": boolean
+    }
+    Score: "Score   <<Value Object>>" {
+      shape: class
+      "+value": "number (>=0)"
+      "+create(raw)": Score
+      "+equals(o)": boolean
     }
   }
 
@@ -491,128 +632,6 @@ capa1: "CAPA 1 · Modelo de Dominio" {
     ILeaderboardStrategy: "ILeaderboardStrategy   <<Domain Service>>" {
       shape: class
       "+calculateRanking(entries, limit)": "LeaderboardEntry[]"
-    }
-  }
-
-  vos: "Value Objects" {
-    style: { fill: "#FEF9C3"; stroke: "#CA8A04" }
-
-    UserId: "UserId   <<Value Object>>" {
-      shape: class
-      "+value": string
-      "+create(raw)": UserId
-      "+equals(o)": boolean
-    }
-    Email: "Email   <<Value Object>>" {
-      shape: class
-      "+value": string
-      "+create(raw)": Email
-      "+equals(o)": boolean
-    }
-    Username: "Username   <<Value Object>>" {
-      shape: class
-      "+value": string
-      "+create(raw)": Username
-      "+equals(o)": boolean
-    }
-    PasswordHash: "PasswordHash   <<Value Object>>" {
-      shape: class
-      "+value": string
-      "+create(raw)": PasswordHash
-      "+equals(o)": boolean
-    }
-    LevelId: "LevelId   <<Value Object>>" {
-      shape: class
-      "+value": string
-      "+create(raw)": LevelId
-      "+equals(o)": boolean
-    }
-    LevelName: "LevelName   <<Value Object>>" {
-      shape: class
-      "+value": string
-      "+create(raw)": LevelName
-      "+equals(o)": boolean
-    }
-    Difficulty: "Difficulty   <<Value Object>>" {
-      shape: class
-      "+value": "easy|medium|hard"
-      "+create(raw)": Difficulty
-      "+equals(o)": boolean
-    }
-    ParMoves: "ParMoves   <<Value Object>>" {
-      shape: class
-      "+value": "number (>0)"
-      "+create(raw)": ParMoves
-      "+equals(o)": boolean
-    }
-    Score: "Score   <<Value Object>>" {
-      shape: class
-      "+value": "number (>=0)"
-      "+create(raw)": Score
-      "+equals(o)": boolean
-    }
-    Moves: "Moves   <<Value Object>>" {
-      shape: class
-      "+value": "number (>=0)"
-      "+create(raw)": Moves
-      "+equals(o)": boolean
-    }
-    TimeSeconds: "TimeSeconds   <<Value Object>>" {
-      shape: class
-      "+value": "number (>=0)"
-      "+create(raw)": TimeSeconds
-      "+equals(o)": boolean
-    }
-    LevelScore: "LevelScore   <<Value Object>>" {
-      shape: class
-      "+levelId": LevelId
-      "+score": Score
-      "+create(levelId, score)": LevelScore
-      "+equals(o)": boolean
-    }
-    BoardsSolved: "BoardsSolved   <<Value Object>>" {
-      shape: class
-      "+value": "number (>=0)"
-      "+create(raw)": BoardsSolved
-      "+equals(o)": boolean
-    }
-    Duration: "Duration   <<Value Object>>" {
-      shape: class
-      "+value": "number (>0) seg"
-      "+create(raw)": Duration
-      "+equals(o)": boolean
-    }
-  }
-
-  tablero: "Tablero — Value Objects compuestos (mecanica A)" {
-    grid-columns: 1
-    grid-gap: 90
-    style: { fill: "#FDE68A"; stroke: "#CA8A04" }
-
-    arriba: "" {
-      grid-columns: 2
-      grid-gap: 150
-      style: { fill: "#FDE68A"; stroke: "#FDE68A" }
-
-      LevelData: "LevelData   <<Value Object>>" {
-        shape: class
-        "+cells": "Cell[]"
-        "+arrows": "ArrowData[]"
-        "+lives": "number?"
-        "+timeLimitSeconds": "number?"
-        "+create(props)": LevelData
-        "+toPrimitives()": LevelDataProps
-      }
-      ArrowData: "ArrowData   <<type>>" {
-        shape: class
-        "+id": string
-        "+path": "Cell[]"
-        "+color": string
-      }
-    }
-    Cell: "Cell   <<type>>" {
-      shape: class
-      "+tuple": "[number, number]"
     }
   }
 
@@ -658,11 +677,13 @@ capa4 -> capa3: { style.opacity: 0 }
 capa3 -> capa2: { style.opacity: 0 }
 capa2 -> capa1: { style.opacity: 0 }
 
-# Dentro de C1: empujar repos y errors DEBAJO de agregados+VOs, para que
-# la composicion (agregado -> VO) quede corta y no cruce los repositorios.
-capa1.aggregates -> capa1.repos: { style.opacity: 0 }
-capa1.vos -> capa1.repos: { style.opacity: 0 }
-capa1.vos -> capa1.errors: { style.opacity: 0 }
+# Dentro de C1: empujar repos y errors DEBAJO de los recuadros de agregado,
+# para que la composicion (agregado -> VO) quede arriba y no cruce lo demas.
+capa1.aggUser -> capa1.repos: { style.opacity: 0 }
+capa1.aggLevel -> capa1.repos: { style.opacity: 0 }
+capa1.aggSurvival -> capa1.repos: { style.opacity: 0 }
+capa1.shared -> capa1.repos: { style.opacity: 0 }
+capa1.repos -> capa1.errors: { style.opacity: 0 }
 
 # =============================================================
 #  REALIZACION  (implements) — triangulo hueco + punteada
@@ -712,39 +733,43 @@ capa1.errors.LevelGenerationError -> capa1.errors.DomainError: { target-arrowhea
 # =============================================================
 #  COMPOSICION  (el agregado POSEE sus Value Objects) — diamante lleno
 # =============================================================
-capa1.aggregates.User <-> capa1.vos.UserId: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.User <-> capa1.vos.Username: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.User <-> capa1.vos.Email: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.User <-> capa1.vos.PasswordHash: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+# Composicion INTRA-agregado (la raiz posee su VO exclusivo, dentro del recuadro)
+# y hacia el shared kernel (VO compartido por 2+ agregados).
+capa1.aggUser.User <-> capa1.shared.UserId: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggUser.User <-> capa1.shared.Username: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggUser.User <-> capa1.aggUser.Email: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggUser.User <-> capa1.aggUser.PasswordHash: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
 
-capa1.aggregates.PlayerProgress <-> capa1.vos.UserId: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.PlayerProgress <-> capa1.vos.LevelId: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.PlayerProgress <-> capa1.vos.LevelScore: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggProgress.PlayerProgress <-> capa1.shared.UserId: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggProgress.PlayerProgress <-> capa1.shared.LevelId: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggProgress.PlayerProgress <-> capa1.aggProgress.LevelScore: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
 
-capa1.aggregates.LevelDefinition <-> capa1.vos.LevelId: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.LevelDefinition <-> capa1.vos.LevelName: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.LevelDefinition <-> capa1.vos.Difficulty: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.LevelDefinition <-> capa1.vos.ParMoves: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.LevelDefinition <-> capa1.tablero.arriba.LevelData: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggLevel.LevelDefinition <-> capa1.shared.LevelId: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggLevel.LevelDefinition <-> capa1.aggLevel.LevelName: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggLevel.LevelDefinition <-> capa1.aggLevel.Difficulty: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggLevel.LevelDefinition <-> capa1.aggLevel.ParMoves: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggLevel.LevelDefinition <-> capa1.aggLevel.LevelData: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
 
-capa1.aggregates.LeaderboardEntry <-> capa1.vos.UserId: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.LeaderboardEntry <-> capa1.vos.Username: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.LeaderboardEntry <-> capa1.vos.LevelId: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.LeaderboardEntry <-> capa1.vos.Score: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.LeaderboardEntry <-> capa1.vos.Moves: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.LeaderboardEntry <-> capa1.vos.TimeSeconds: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggLeaderboard.LeaderboardEntry <-> capa1.shared.UserId: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggLeaderboard.LeaderboardEntry <-> capa1.shared.Username: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggLeaderboard.LeaderboardEntry <-> capa1.shared.LevelId: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggLeaderboard.LeaderboardEntry <-> capa1.shared.Score: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggLeaderboard.LeaderboardEntry <-> capa1.aggLeaderboard.Moves: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggLeaderboard.LeaderboardEntry <-> capa1.aggLeaderboard.TimeSeconds: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
 
-capa1.aggregates.SurvivalEntry <-> capa1.vos.UserId: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.SurvivalEntry <-> capa1.vos.Username: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.SurvivalEntry <-> capa1.vos.BoardsSolved: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.SurvivalEntry <-> capa1.vos.Duration: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
-capa1.aggregates.SurvivalEntry <-> capa1.vos.Score: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggSurvival.SurvivalEntry <-> capa1.shared.UserId: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggSurvival.SurvivalEntry <-> capa1.shared.Username: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggSurvival.SurvivalEntry <-> capa1.aggSurvival.BoardsSolved: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggSurvival.SurvivalEntry <-> capa1.aggSurvival.Duration: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
+capa1.aggSurvival.SurvivalEntry <-> capa1.shared.Score: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#B45309" }
 
-capa1.tablero.arriba.LevelData <-> capa1.tablero.Cell: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#CA8A04" }
-capa1.tablero.arriba.LevelData <-> capa1.tablero.arriba.ArrowData: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#CA8A04" }
-capa1.tablero.arriba.ArrowData <-> capa1.tablero.Cell: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#CA8A04" }
-capa1.vos.LevelScore <-> capa1.vos.LevelId: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#CA8A04" }
-capa1.vos.LevelScore <-> capa1.vos.Score: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#CA8A04" }
+# LevelData (dentro de LevelDefinition) compone Cell y ArrowData.
+capa1.aggLevel.LevelData <-> capa1.aggLevel.Cell: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#CA8A04" }
+capa1.aggLevel.LevelData <-> capa1.aggLevel.ArrowData: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#CA8A04" }
+capa1.aggLevel.ArrowData <-> capa1.aggLevel.Cell: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#CA8A04" }
+# LevelScore (dentro de PlayerProgress) compone LevelId y Score, ambos compartidos.
+capa1.aggProgress.LevelScore <-> capa1.shared.LevelId: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#CA8A04" }
+capa1.aggProgress.LevelScore <-> capa1.shared.Score: { source-arrowhead: { shape: diamond; style.filled: true }; style.stroke: "#CA8A04" }
 
 # =============================================================
 #  FLUJO  controller -> caso de uso  (dependencia)
@@ -810,9 +835,9 @@ capa4.services.LlmLevelGenerator -> capa4.llm.Anthropic: "usa" { style.stroke-da
 # =============================================================
 # (Todos los VO lanzan ValidationError desde create(); se muestran 3 representativos
 #  —string, number y compuesto— para no dibujar 15 flechas identicas.)
-capa1.vos.Email -> capa1.errors.ValidationError: "create() lanza" { style.stroke-dash: 2; style.stroke: "#B91C1C" }
-capa1.vos.Score -> capa1.errors.ValidationError: "create() lanza" { style.stroke-dash: 2; style.stroke: "#B91C1C" }
-capa1.tablero.arriba.LevelData -> capa1.errors.ValidationError: "create() lanza" { style.stroke-dash: 2; style.stroke: "#B91C1C" }
+capa1.aggUser.Email -> capa1.errors.ValidationError: "create() lanza" { style.stroke-dash: 2; style.stroke: "#B91C1C" }
+capa1.shared.Score -> capa1.errors.ValidationError: "create() lanza" { style.stroke-dash: 2; style.stroke: "#B91C1C" }
+capa1.aggLevel.LevelData -> capa1.errors.ValidationError: "create() lanza" { style.stroke-dash: 2; style.stroke: "#B91C1C" }
 capa2.uc.RegisterUserUseCase -> capa1.errors.EmailAlreadyRegisteredError: "lanza" { style.stroke-dash: 2; style.stroke: "#B91C1C" }
 capa2.uc.RegisterUserUseCase -> capa1.errors.UsernameAlreadyTakenError: "lanza" { style.stroke-dash: 2; style.stroke: "#B91C1C" }
 capa2.uc.AuthenticateUserUseCase -> capa1.errors.InvalidCredentialsError: "lanza" { style.stroke-dash: 2; style.stroke: "#B91C1C" }
@@ -821,10 +846,10 @@ capa4.services.LlmLevelGenerator -> capa1.errors.LevelGenerationError: "lanza" {
 # =============================================================
 #  MAPPERS y FACTORY  (traduccion Dominio -> DTO) — conectan mappers, DTOs y factory
 # =============================================================
-capa3.mappers.LevelMapper -> capa1.aggregates.LevelDefinition: "lee" { style.stroke-dash: 2; style.stroke: "#94A3B8" }
-capa3.mappers.ProgressMapper -> capa1.aggregates.PlayerProgress: "lee" { style.stroke-dash: 2; style.stroke: "#94A3B8" }
-capa3.mappers.LeaderboardMapper -> capa1.aggregates.LeaderboardEntry: "lee" { style.stroke-dash: 2; style.stroke: "#94A3B8" }
-capa3.mappers.SurvivalMapper -> capa1.aggregates.SurvivalEntry: "lee" { style.stroke-dash: 2; style.stroke: "#94A3B8" }
+capa3.mappers.LevelMapper -> capa1.aggLevel.LevelDefinition: "lee" { style.stroke-dash: 2; style.stroke: "#94A3B8" }
+capa3.mappers.ProgressMapper -> capa1.aggProgress.PlayerProgress: "lee" { style.stroke-dash: 2; style.stroke: "#94A3B8" }
+capa3.mappers.LeaderboardMapper -> capa1.aggLeaderboard.LeaderboardEntry: "lee" { style.stroke-dash: 2; style.stroke: "#94A3B8" }
+capa3.mappers.SurvivalMapper -> capa1.aggSurvival.SurvivalEntry: "lee" { style.stroke-dash: 2; style.stroke: "#94A3B8" }
 
 capa3.mappers.LevelMapper -> capa3.dtos.LevelDto: "produce" { style.stroke-dash: 2; style.stroke: "#059669" }
 capa3.mappers.ProgressMapper -> capa3.dtos.ProgressDto: "produce" { style.stroke-dash: 2; style.stroke: "#059669" }
